@@ -414,6 +414,7 @@ export class VoiceSynthesizer {
   private currentIndex: number = 0
   private onProgress?: (info: { index: number; total: number; paused: boolean }) => void
   private currentAudio: HTMLAudioElement | null = null
+  private availableElevenLabsVoices: { value: string; label: string }[] = []
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey
@@ -593,7 +594,15 @@ export class VoiceSynthesizer {
       })
 
       if (!response.ok) {
-        throw new Error(`ElevenLabs API error: ${response.status}`)
+        const errorText = await response.text()
+        let errorMessage = `ElevenLabs API error: ${response.status}`
+        try {
+          const errorData = JSON.parse(errorText)
+          if (errorData.detail?.message) {
+            errorMessage += ` - ${errorData.detail.message}`
+          }
+        } catch {}
+        throw new Error(errorMessage)
       }
 
       const audioBlob = await response.blob()
@@ -611,9 +620,13 @@ export class VoiceSynthesizer {
         audio.onerror = (error) => {
           URL.revokeObjectURL(audioUrl)
           this.currentAudio = null
-          reject(error)
+          reject(new Error(`Audio playback error: ${error}`))
         }
-        audio.play()
+        audio.play().catch(error => {
+          URL.revokeObjectURL(audioUrl)
+          this.currentAudio = null
+          reject(new Error(`Failed to play audio: ${error}`))
+        })
       })
     } catch (error) {
       console.error('ElevenLabs TTS error:', error)
@@ -714,14 +727,28 @@ export class VoiceSynthesizer {
     }
   }
 
+  async loadElevenLabsVoices(): Promise<void> {
+    if (!this.apiKey) return
+    
+    try {
+      const voices = await this.getAvailableVoices()
+      this.availableElevenLabsVoices = voices.map((voice: any) => ({
+        value: voice.voice_id,
+        label: voice.name
+      }))
+    } catch (error) {
+      console.error('Failed to load ElevenLabs voices:', error)
+      this.availableElevenLabsVoices = []
+    }
+  }
+
   getVoiceOptions(): { value: string; label: string }[] {
     const options = [
       { value: "browser", label: "Browser Default" }
     ]
 
-    if (this.apiKey) {
-      // Add ElevenLabs voices if available
-      // This will be populated when getAvailableVoices() is called
+    if (this.apiKey && this.availableElevenLabsVoices.length > 0) {
+      options.push(...this.availableElevenLabsVoices)
     }
 
     return options

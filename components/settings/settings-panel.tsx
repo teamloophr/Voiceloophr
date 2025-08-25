@@ -148,7 +148,8 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onSettingsSaved }: 
   }
 
   const validateElevenLabsKey = (key: string) => {
-    return key.length > 20 && key.includes("-")
+    // ElevenLabs API keys are typically 32+ characters and may contain letters, numbers, and hyphens
+    return key.length >= 32 && /^[a-zA-Z0-9-]+$/.test(key)
   }
 
   if (!isOpen) return null
@@ -364,7 +365,7 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onSettingsSaved }: 
                     </div>
                     {settings.elevenLabsApiKey && !validateElevenLabsKey(settings.elevenLabsApiKey) && (
                       <p className="text-sm mt-1" style={{ color: '#ef4444' }}>
-                        Invalid ElevenLabs API key format. Should be at least 20 characters.
+                        Invalid ElevenLabs API key format. Should be at least 32 characters and contain only letters, numbers, and hyphens.
                       </p>
                     )}
                     <p className="text-xs mt-1" style={{ color: ui.subText }}>

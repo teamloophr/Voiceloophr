@@ -206,11 +206,13 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         
         // Load available voices
         try {
-          const voices = await synthesizer.getAvailableVoices()
+          await synthesizer.loadElevenLabsVoices()
           const voiceOptions = synthesizer.getVoiceOptions()
           setAvailableVoices(voiceOptions)
         } catch (error) {
           console.error('Failed to load ElevenLabs voices:', error)
+          // Fallback to browser TTS
+          setAvailableVoices([{ value: "browser", label: "Browser Default" }])
         }
       } else {
         // Use browser TTS only
@@ -289,7 +291,6 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         if (visual) {
           const v = JSON.parse(visual)
           if (typeof v.hue === 'number') setHue(v.hue)
-          if (typeof v.hueAutoSpeed === 'number') setHueAutoSpeed(v.hueAutoSpeed)
         }
       } catch {}
     }
@@ -528,17 +529,20 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         setMessages(prev => [...prev, transcriptionMessage])
         
         // Process with AI for HR insights
-        const aiResponse = await AIProcessor.processHRQuery(transcription.text, key)
-        
-        const aiMessage: Message = {
-          id: (Date.now() + 2).toString(),
-          content: aiResponse,
-          role: "assistant",
-          timestamp: new Date(),
-          type: "text"
+        const key = getEffectiveApiKey()
+        if (key) {
+          const aiResponse = await AIProcessor.processHRQuery(transcription.text, key)
+          
+          const aiMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            content: aiResponse,
+            role: "assistant",
+            timestamp: new Date(),
+            type: "text"
+          }
+          
+          setMessages(prev => [...prev, aiMessage])
         }
-        
-        setMessages(prev => [...prev, aiMessage])
         
       } catch (transcriptionError) {
         console.error('Transcription error:', transcriptionError)
