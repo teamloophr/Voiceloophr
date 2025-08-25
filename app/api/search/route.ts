@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Processing search request:", { query, filters })
 
-    const results = await searchEngine.search(query, filters || {})
+    const results = await searchEngine({ query, filters: filters || {} })
 
     // TODO: Log search query to database when Supabase is connected
     // await supabase.from('search_queries').insert({
@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      results,
-      totalCount: results.length,
+      results: results.results,
+      totalCount: results.totalCount,
       query,
       filters,
     })

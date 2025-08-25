@@ -94,15 +94,30 @@ export class FileProcessor {
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
       'text/plain',
-      'text/csv'
+      'text/csv',
+      'audio/wav',
+      'audio/mpeg',
+      'audio/mp4',
+      'audio/x-m4a'
     ]
 
     if (file.size > maxSize) {
       return { isValid: false, error: 'File size exceeds 10MB limit' }
     }
 
-    if (!allowedTypes.includes(file.type)) {
-      return { isValid: false, error: 'File type not supported. Please upload PDF, Word, or text files.' }
+    // Check both MIME type and file extension for better compatibility
+    const fileName = file.name.toLowerCase()
+    const hasValidExtension = fileName.endsWith('.pdf') || 
+                             fileName.endsWith('.doc') || 
+                             fileName.endsWith('.docx') || 
+                             fileName.endsWith('.txt') || 
+                             fileName.endsWith('.csv') ||
+                             fileName.endsWith('.wav') ||
+                             fileName.endsWith('.mp3') ||
+                             fileName.endsWith('.m4a')
+
+    if (!allowedTypes.includes(file.type) && !hasValidExtension) {
+      return { isValid: false, error: 'File type not supported. Please upload PDF, Word, text, CSV, or audio files (WAV, MP3, M4A).' }
     }
 
     return { isValid: true }

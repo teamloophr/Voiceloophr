@@ -26,6 +26,43 @@ async function extractFromText(file: File) {
   return { text, metadata: { wordCount: text.split(/\s+/).length } }
 }
 
+async function extractFromCSV(file: File) {
+  const text = await file.text()
+  const lines = text.split('\n')
+  const headers = lines[0]?.split(',').map(h => h.trim()) || []
+  const rows = lines.slice(1).filter(line => line.trim()).map(line => 
+    line.split(',').map(cell => cell.trim())
+  )
+  
+  // Create a structured summary
+  const summary = `CSV with ${headers.length} columns and ${rows.length} rows.\n\nHeaders: ${headers.join(', ')}\n\nFirst few rows:\n${rows.slice(0, 3).map(row => row.join(', ')).join('\n')}`
+  
+  return { 
+    text: summary, 
+    metadata: { 
+      wordCount: summary.split(/\s+/).length,
+      columns: headers.length,
+      rows: rows.length,
+      fileType: 'csv'
+    } 
+  }
+}
+
+async function extractFromAudio(file: File) {
+  // For audio files, we'll return a placeholder since transcription requires additional processing
+  const audioInfo = `Audio file: ${file.name}\nType: ${file.type}\nSize: ${(file.size / 1024 / 1024).toFixed(2)} MB\n\nNote: Audio transcription requires separate processing. Please use the voice transcription feature for detailed analysis.`
+  
+  return { 
+    text: audioInfo, 
+    metadata: { 
+      wordCount: audioInfo.split(/\s+/).length,
+      fileType: 'audio',
+      duration: 'Unknown',
+      sampleRate: 'Unknown'
+    } 
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData()
@@ -39,10 +76,20 @@ export async function POST(req: NextRequest) {
     const safeName = (file.name || 'upload').split(/[\\/]/).pop() || 'upload'
 
     const type = (file.type || '').toLowerCase()
+    const fileName = file.name.toLowerCase()
     let extracted
-    if (type.includes('pdf') || file.name.toLowerCase().endsWith('.pdf')) extracted = await extractFromPDF(file)
-    else if (type.includes('word') || file.name.toLowerCase().endsWith('.docx')) extracted = await extractFromDocx(file)
-    else extracted = await extractFromText(file)
+    
+    if (type.includes('pdf') || fileName.endsWith('.pdf')) {
+      extracted = await extractFromPDF(file)
+    } else if (type.includes('word') || fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+      extracted = await extractFromDocx(file)
+    } else if (type.includes('csv') || fileName.endsWith('.csv')) {
+      extracted = await extractFromCSV(file)
+    } else if (type.includes('audio') || fileName.endsWith('.wav') || fileName.endsWith('.mp3') || fileName.endsWith('.m4a')) {
+      extracted = await extractFromAudio(file)
+    } else {
+      extracted = await extractFromText(file)
+    }
 
     return NextResponse.json({ success: true, extracted, systemPrompt, userPrompt, filename: safeName })
   } catch (err: any) {

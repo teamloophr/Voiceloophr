@@ -1,5 +1,3 @@
-import { FcGoogle } from "react-icons/fc";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -69,7 +67,7 @@ const Signup1 = ({
                   {signupText}
                 </Button>
                 <Button variant="outline" className="w-full">
-                  <FcGoogle className="mr-2 size-5" />
+                  <div className="mr-2 w-5 h-5 bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-sm" />
                   {googleText}
                 </Button>
               </div>

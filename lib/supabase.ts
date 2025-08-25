@@ -25,5 +25,19 @@ export interface SearchResult {
   title: string
   content: string
   similarity: number
-  metadata?: Record<string, any>
+  relevanceScore: number
+  description?: string
+  highlights?: string[]
+  metadata?: {
+    fileType?: string
+    uploadedAt?: string
+    fileSize?: number
+    sentiment?: 'positive' | 'negative' | 'neutral'
+    confidence?: number
+    skills?: string[]
+    experienceLevel?: string
+    location?: string
+    department?: string
+    [key: string]: any
+  }
 }

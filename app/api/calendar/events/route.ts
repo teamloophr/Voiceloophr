@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { calendarManager } from "@/lib/calendar-utils"
 import { createSupabaseServer } from "../supabase-server"
 

@@ -128,7 +128,7 @@ export function DocumentUpload() {
             <span>Upload Documents</span>
           </CardTitle>
           <CardDescription>
-            Upload resumes, CVs, and other HR documents. Supported formats: PDF, DOC, DOCX, TXT (max 10MB)
+            Upload resumes, CVs, and other HR documents. Supported formats: PDF, DOC, DOCX, TXT, CSV, WAV, MP3, M4A (max 10MB)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -144,12 +144,12 @@ export function DocumentUpload() {
             <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <div className="space-y-2">
               <p className="text-lg font-medium text-black">Drag and drop files here, or click to select</p>
-              <p className="text-sm text-gray-500">PDF, DOC, DOCX, TXT files up to 10MB</p>
+              <p className="text-sm text-gray-500">PDF, DOC, DOCX, TXT, CSV, WAV, MP3, M4A files up to 10MB</p>
             </div>
             <input
               type="file"
               multiple
-              accept=".pdf,.doc,.docx,.txt"
+              accept=".pdf,.doc,.docx,.txt,.csv,.wav,.mp3,.m4a"
               onChange={handleFileSelect}
               className="hidden"
               id="file-upload"

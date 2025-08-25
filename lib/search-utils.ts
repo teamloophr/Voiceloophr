@@ -7,11 +7,15 @@ export interface SearchQuery {
   filters?: {
     fileType?: string[]
     dateRange?: {
-      start: Date
-      end: Date
+      start?: Date
+      end?: Date
     }
     sentiment?: 'positive' | 'negative' | 'neutral'
     minConfidence?: number
+    skills?: string[]
+    experienceLevel?: string[]
+    location?: string
+    department?: string
   }
   limit?: number
   similarityThreshold?: number
@@ -22,271 +26,362 @@ export interface SearchResponse {
   totalCount: number
   queryTime: number
   suggestions?: string[]
+  facets?: {
+    fileTypes: { [key: string]: number }
+    skills: { [key: string]: number }
+    experienceLevels: { [key: string]: number }
+    locations: { [key: string]: number }
+    departments: { [key: string]: number }
+  }
 }
 
-// Legacy-shim types for UI imports
-export type SearchFilters = SearchQuery['filters']
-export type SavedSearch = never
+export interface SearchFilters {
+  fileType?: string[]
+  dateRange?: {
+    start?: Date
+    end?: Date
+  }
+  sentiment?: 'positive' | 'negative' | 'neutral'
+  minConfidence?: number
+  skills?: string[]
+  experienceLevel?: string[]
+  location?: string
+  department?: string
+}
 
-// Provide a function-style API for legacy imports
+export interface SavedSearch {
+  id: string
+  name: string
+  query: string
+  filters: SearchFilters
+  resultCount: number
+  createdAt: string
+}
+
+// Main search engine function
 export async function searchEngine(query: SearchQuery): Promise<SearchResponse> {
-  return DocumentSearch.semanticSearch(query)
+  const startTime = Date.now()
+  
+  try {
+    // Multi-source search: documents, candidates, and events
+    const [documentResults, candidateResults, eventResults] = await Promise.all([
+      searchDocuments(query),
+      searchCandidates(query),
+      searchEvents(query)
+    ])
+    
+    // Combine and rank results
+    const allResults = [...documentResults, ...candidateResults, ...eventResults]
+    
+    // Apply filters
+    let filteredResults = allResults
+    if (query.filters) {
+      filteredResults = applyFilters(allResults, query.filters)
+    }
+    
+    // Sort by relevance
+    filteredResults.sort((a, b) => b.relevanceScore - a.relevanceScore)
+    
+    // Limit results
+    const limitedResults = filteredResults.slice(0, query.limit || 20)
+    
+    // Generate facets for filtering
+    const facets = generateFacets(allResults)
+    
+    // Generate search suggestions
+    const suggestions = await generateSearchSuggestions(query.query, limitedResults)
+    
+    return {
+      results: limitedResults,
+      totalCount: filteredResults.length,
+      queryTime: Date.now() - startTime,
+      suggestions,
+      facets
+    }
+    
+  } catch (error) {
+    console.error('Search engine error:', error)
+    throw new Error('Search failed. Please try again.')
+  }
 }
 
-export class DocumentSearch {
-  // Perform semantic search using RAG
-  static async semanticSearch(query: SearchQuery): Promise<SearchResponse> {
-    const startTime = Date.now()
+// Search documents using vector similarity
+async function searchDocuments(query: SearchQuery): Promise<SearchResult[]> {
+  try {
+    // Generate embeddings for the search query
+    const queryEmbedding = await AIProcessor.generateEmbeddings(query.query)
     
-    try {
-      // Generate embeddings for the search query
-      const queryEmbedding = await AIProcessor.generateEmbeddings(query.query)
-      
-      // Perform vector similarity search
-      const { data: searchResults, error } = await supabase.rpc('search_documents', {
-        query_embedding: queryEmbedding,
-        similarity_threshold: query.similarityThreshold || 0.7,
-        match_count: query.limit || 10
-      })
-      
-      if (error) {
-        console.error('Search error:', error)
-        throw new Error('Failed to perform search')
-      }
-      
-      // Apply additional filters if specified
-      let filteredResults = searchResults || []
-      
-      if (query.filters) {
-        filteredResults = this.applyFilters(filteredResults, query.filters)
-      }
-      
-      // Generate search suggestions
-      const suggestions = await this.generateSearchSuggestions(query.query, filteredResults)
-      
-      return {
-        results: filteredResults,
-        totalCount: filteredResults.length,
-        queryTime: Date.now() - startTime,
-        suggestions
-      }
-      
-    } catch (error) {
-      console.error('Semantic search error:', error)
-      throw new Error('Search failed. Please try again.')
-    }
-  }
-
-  // Apply filters to search results
-  private static applyFilters(results: SearchResult[], filters: SearchQuery['filters']): SearchResult[] {
-    if (!filters) return results
-    
-    return results.filter(result => {
-      // File type filter
-      if (filters.fileType && filters.fileType.length > 0) {
-        const fileType = result.metadata?.fileType || 'unknown'
-        if (!filters.fileType.includes(fileType)) return false
-      }
-      
-      // Date range filter
-      if (filters.dateRange) {
-        const uploadDate = new Date(result.metadata?.uploadedAt || '')
-        if (uploadDate < filters.dateRange.start || uploadDate > filters.dateRange.end) {
-          return false
-        }
-      }
-      
-      // Sentiment filter
-      if (filters.sentiment) {
-        const sentiment = result.metadata?.sentiment || 'neutral'
-        if (sentiment !== filters.sentiment) return false
-      }
-      
-      // Confidence filter
-      if (filters.minConfidence) {
-        const confidence = result.metadata?.confidence || 0
-        if (confidence < filters.minConfidence) return false
-      }
-      
-      return true
+    // Perform vector similarity search
+    const { data: searchResults, error } = await supabase.rpc('search_documents', {
+      query_embedding: queryEmbedding,
+      similarity_threshold: query.similarityThreshold || 0.7,
+      match_count: query.limit || 10
     })
-  }
-
-  // Generate search suggestions based on query and results
-  private static async generateSearchSuggestions(query: string, results: SearchResult[]): Promise<string[]> {
-    try {
-      const suggestions: string[] = []
-      
-      // Extract common themes from results
-      const themes = this.extractThemes(results)
-      
-      // Generate AI-powered suggestions
-      const aiSuggestions = await this.generateAISuggestions(query, themes)
-      
-      suggestions.push(...aiSuggestions)
-      
-      // Add result-based suggestions
-      if (results.length > 0) {
-        const topResult = results[0]
-        if (topResult.metadata?.keyPoints) {
-          suggestions.push(`Learn more about: ${topResult.metadata.keyPoints[0]}`)
-        }
-      }
-      
-      return suggestions.slice(0, 5) // Limit to 5 suggestions
-      
-    } catch (error) {
-      console.error('Error generating suggestions:', error)
+    
+    if (error) {
+      console.error('Document search error:', error)
       return []
     }
-  }
-
-  // Extract common themes from search results
-  private static extractThemes(results: SearchResult[]): string[] {
-    const themes: string[] = []
     
-    results.forEach(result => {
-      if (result.metadata?.keyPoints) {
-        themes.push(...result.metadata.keyPoints)
+    // Transform to SearchResult format
+    return (searchResults || []).map((doc: any) => ({
+      id: doc.id,
+      title: doc.title,
+      content: doc.content,
+      similarity: doc.similarity || 0,
+      relevanceScore: Math.round((doc.similarity || 0) * 100),
+      description: doc.summary,
+      highlights: generateHighlights(doc.content, query.query),
+      metadata: {
+        fileType: doc.file_type,
+        uploadedAt: doc.uploaded_at,
+        fileSize: doc.file_size,
+        sentiment: doc.sentiment,
+        confidence: doc.confidence
       }
-    })
+    }))
     
-    // Count occurrences and return top themes
-    const themeCounts = themes.reduce((acc, theme) => {
-      acc[theme] = (acc[theme] || 0) + 1
-      return acc
-    }, {} as Record<string, number>)
-    
-    return Object.entries(themeCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([theme]) => theme)
+  } catch (error) {
+    console.error('Document search error:', error)
+    return []
   }
+}
 
-  // Generate AI-powered search suggestions
-  private static async generateAISuggestions(query: string, themes: string[]): Promise<string[]> {
-    try {
-      const prompt = `Based on the search query "${query}" and the identified themes ${themes.join(', ')}, suggest 3 related search queries that would be helpful for HR professionals. Return only the suggestions, one per line.`
-      
-      const response = await AIProcessor.processHRQuery(prompt)
-      return response.split('\n').filter(line => line.trim().length > 0).slice(0, 3)
-      
-    } catch (error) {
-      console.error('Error generating AI suggestions:', error)
-      return []
+// Search candidates (mock implementation for now)
+async function searchCandidates(query: SearchQuery): Promise<SearchResult[]> {
+  // TODO: Implement candidate search from database
+  const mockCandidates = [
+    {
+      id: 'candidate-1',
+      title: 'Senior React Developer',
+      content: 'Experienced React developer with 5+ years building scalable web applications',
+      similarity: 0.85,
+      relevanceScore: 85,
+      description: 'Full-stack developer specializing in React and Node.js',
+      highlights: ['React', 'Node.js', 'scalable'],
+      metadata: {
+        skills: ['React', 'Node.js', 'TypeScript', 'AWS'],
+        experienceLevel: 'senior',
+        location: 'San Francisco, CA',
+        department: 'Engineering'
+      }
+    },
+    {
+      id: 'candidate-2',
+      title: 'UX Designer',
+      content: 'Creative UX designer with expertise in user research and design systems',
+      similarity: 0.78,
+      relevanceScore: 78,
+      description: 'User experience designer focused on research-driven design',
+      highlights: ['UX', 'user research', 'design systems'],
+      metadata: {
+        skills: ['Figma', 'User Research', 'Design Systems', 'Prototyping'],
+        experienceLevel: 'mid',
+        location: 'New York, NY',
+        department: 'Design'
+      }
     }
-  }
+  ]
+  
+  return mockCandidates.filter(candidate => 
+    candidate.title.toLowerCase().includes(query.query.toLowerCase()) ||
+    candidate.content.toLowerCase().includes(query.query.toLowerCase())
+  )
+}
 
-  // Search by specific criteria (non-semantic)
-  static async searchByCriteria(criteria: {
-    keywords?: string[]
-    fileType?: string
-    dateFrom?: Date
-    dateTo?: Date
-    limit?: number
-  }): Promise<SearchResponse> {
-    const startTime = Date.now()
-    
-    try {
-      let query = supabase
-        .from('hr_documents')
-        .select('*')
-        .order('uploaded_at', { ascending: false })
-      
-      // Apply filters
-      if (criteria.fileType) {
-        query = query.eq('file_type', criteria.fileType)
+// Search events (mock implementation for now)
+async function searchEvents(query: SearchQuery): Promise<SearchResult[]> {
+  // TODO: Implement event search from database
+  const mockEvents = [
+    {
+      id: 'event-1',
+      title: 'Team Building Workshop',
+      content: 'Monthly team building workshop to improve collaboration and communication',
+      similarity: 0.72,
+      relevanceScore: 72,
+      description: 'Team collaboration workshop',
+      highlights: ['team building', 'collaboration', 'communication'],
+      metadata: {
+        date: '2024-09-15',
+        location: 'Conference Room A',
+        department: 'HR'
       }
-      
-      if (criteria.dateFrom) {
-        query = query.gte('uploaded_at', criteria.dateFrom.toISOString())
-      }
-      
-      if (criteria.dateTo) {
-        query = query.lte('uploaded_at', criteria.dateTo.toISOString())
-      }
-      
-      if (criteria.limit) {
-        query = query.limit(criteria.limit)
-      }
-      
-      const { data: results, error } = await query
-      
-      if (error) {
-        console.error('Criteria search error:', error)
-        throw new Error('Search failed')
-      }
-      
-      // Filter by keywords if specified
-      let filteredResults = results || []
-      
-      if (criteria.keywords && criteria.keywords.length > 0) {
-        filteredResults = this.filterByKeywords(filteredResults, criteria.keywords)
-      }
-      
-      return {
-        results: filteredResults,
-        totalCount: filteredResults.length,
-        queryTime: Date.now() - startTime
-      }
-      
-    } catch (error) {
-      console.error('Criteria search error:', error)
-      throw new Error('Search failed. Please try again.')
     }
-  }
+  ]
+  
+  return mockEvents.filter(event => 
+    event.title.toLowerCase().includes(query.query.toLowerCase()) ||
+    event.content.toLowerCase().includes(query.query.toLowerCase())
+  )
+}
 
-  // Filter results by keywords
-  private static filterByKeywords(results: any[], keywords: string[]): any[] {
-    return results.filter(result => {
-      const searchableText = `${result.title} ${result.content} ${result.summary || ''}`.toLowerCase()
-      
-      return keywords.some(keyword => 
-        searchableText.includes(keyword.toLowerCase())
-      )
-    })
-  }
+// Apply filters to search results
+function applyFilters(results: SearchResult[], filters: SearchFilters): SearchResult[] {
+  return results.filter(result => {
+    // File type filter
+    if (filters.fileType && filters.fileType.length > 0) {
+      const fileType = result.metadata?.fileType || 'unknown'
+      if (!filters.fileType.includes(fileType)) return false
+    }
+    
+    // Date range filter
+    if (filters.dateRange) {
+      const uploadDate = new Date(result.metadata?.uploadedAt || '')
+      if (filters.dateRange.start && uploadDate < filters.dateRange.start) return false
+      if (filters.dateRange.end && uploadDate > filters.dateRange.end) return false
+    }
+    
+    // Sentiment filter
+    if (filters.sentiment) {
+      const sentiment = result.metadata?.sentiment || 'neutral'
+      if (sentiment !== filters.sentiment) return false
+    }
+    
+    // Confidence filter
+    if (filters.minConfidence) {
+      const confidence = result.metadata?.confidence || 0
+      if (confidence < filters.minConfidence) return false
+    }
+    
+    // Skills filter
+    if (filters.skills && filters.skills.length > 0) {
+      const resultSkills = result.metadata?.skills || []
+      if (!filters.skills.some(skill => resultSkills.includes(skill))) return false
+    }
+    
+    // Experience level filter
+    if (filters.experienceLevel && filters.experienceLevel.length > 0) {
+      const resultLevel = result.metadata?.experienceLevel || ''
+      if (!filters.experienceLevel.includes(resultLevel)) return false
+    }
+    
+    // Location filter
+    if (filters.location) {
+      const resultLocation = result.metadata?.location || ''
+      if (!resultLocation.toLowerCase().includes(filters.location.toLowerCase())) return false
+    }
+    
+    // Department filter
+    if (filters.department) {
+      const resultDepartment = result.metadata?.department || ''
+      if (!resultDepartment.toLowerCase().includes(filters.department.toLowerCase())) return false
+    }
+    
+    return true
+  })
+}
 
-  // Get document statistics
-  static async getDocumentStats(): Promise<{
-    totalDocuments: number
-    totalSize: number
-    fileTypeBreakdown: Record<string, number>
-    recentUploads: number
-  }> {
-    try {
-      const { data: documents, error } = await supabase
-        .from('hr_documents')
-        .select('file_type, file_size, uploaded_at')
-      
-      if (error) throw error
-      
-      const stats = {
-        totalDocuments: documents?.length || 0,
-        totalSize: 0,
-        fileTypeBreakdown: {} as Record<string, number>,
-        recentUploads: 0
+// Generate search result highlights
+function generateHighlights(content: string, query: string): string[] {
+  const highlights: string[] = []
+  const queryWords = query.toLowerCase().split(' ')
+  
+  queryWords.forEach(word => {
+    if (word.length > 2) {
+      const regex = new RegExp(`\\b${word}\\w*`, 'gi')
+      const matches = content.match(regex)
+      if (matches) {
+        highlights.push(...matches.slice(0, 3))
       }
-      
-      const oneWeekAgo = new Date()
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-      
-      documents?.forEach(doc => {
-        stats.totalSize += doc.file_size || 0
-        
-        const fileType = doc.file_type || 'unknown'
-        stats.fileTypeBreakdown[fileType] = (stats.fileTypeBreakdown[fileType] || 0) + 1
-        
-        if (new Date(doc.uploaded_at) > oneWeekAgo) {
-          stats.recentUploads++
-        }
+    }
+  })
+  
+  return [...new Set(highlights)].slice(0, 5)
+}
+
+// Generate search suggestions
+async function generateSearchSuggestions(query: string, results: SearchResult[]): Promise<string[]> {
+  const suggestions: string[] = []
+  
+  // Add query-based suggestions
+  suggestions.push(`${query} skills`, `${query} experience`, `${query} requirements`)
+  
+  // Add result-based suggestions
+  results.forEach(result => {
+    if (result.metadata?.skills) {
+      result.metadata.skills.forEach(skill => {
+        suggestions.push(`${query} ${skill}`)
       })
-      
-      return stats
-      
-    } catch (error) {
-      console.error('Error getting document stats:', error)
-      throw new Error('Failed to retrieve document statistics')
     }
+    if (result.metadata?.experienceLevel) {
+      suggestions.push(`${query} ${result.metadata.experienceLevel}`)
+    }
+  })
+  
+  return [...new Set(suggestions)].slice(0, 8)
+}
+
+// Generate facets for filtering
+function generateFacets(results: SearchResult[]) {
+  const facets = {
+    fileTypes: {} as { [key: string]: number },
+    skills: {} as { [key: string]: number },
+    experienceLevels: {} as { [key: string]: number },
+    locations: {} as { [key: string]: number },
+    departments: {} as { [key: string]: number }
+  }
+  
+  results.forEach(result => {
+    // File types
+    if (result.metadata?.fileType) {
+      facets.fileTypes[result.metadata.fileType] = (facets.fileTypes[result.metadata.fileType] || 0) + 1
+    }
+    
+    // Skills
+    if (result.metadata?.skills) {
+      result.metadata.skills.forEach(skill => {
+        facets.skills[skill] = (facets.skills[skill] || 0) + 1
+      })
+    }
+    
+    // Experience levels
+    if (result.metadata?.experienceLevel) {
+      facets.experienceLevels[result.metadata.experienceLevel] = (facets.experienceLevels[result.metadata.experienceLevel] || 0) + 1
+    }
+    
+    // Locations
+    if (result.metadata?.location) {
+      facets.locations[result.metadata.location] = (facets.locations[result.metadata.location] || 0) + 1
+    }
+    
+    // Departments
+    if (result.metadata?.department) {
+      facets.departments[result.metadata.department] = (facets.departments[result.metadata.department] || 0) + 1
+    }
+  })
+  
+  return facets
+}
+
+// Search engine API with additional methods
+export const searchEngineAPI = {
+  search: searchEngine,
+  
+  async getSearchSuggestions(query: string): Promise<string[]> {
+    return generateSearchSuggestions(query, [])
+  },
+  
+  getSavedSearches(): SavedSearch[] {
+    // TODO: Implement persistent saved searches
+    return []
+  },
+  
+  saveSearch(name: string, query: string, filters: SearchFilters, resultCount: number): SavedSearch {
+    const savedSearch: SavedSearch = {
+      id: Date.now().toString(),
+      name,
+      query,
+      filters,
+      resultCount,
+      createdAt: new Date().toISOString()
+    }
+    
+    // TODO: Persist to database
+    return savedSearch
+  },
+  
+  deleteSavedSearch(id: string): boolean {
+    // TODO: Implement delete from database
+    return true
   }
 }

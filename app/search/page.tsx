@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { AdvancedSearch } from "@/components/search/advanced-search"
 import { SearchResults } from "@/components/search/search-results"
-import type { SearchResult } from "@/lib/search-utils"
+import type { SearchResult } from "@/lib/supabase"
 
 export default function SearchPage() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])

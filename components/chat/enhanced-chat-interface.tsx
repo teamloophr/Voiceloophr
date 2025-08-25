@@ -26,6 +26,10 @@ interface Message {
     fileSize?: string
     analysis?: DocumentAnalysis
     transcription?: TranscriptionResult
+    file?: File
+    extractedText?: any
+    requiresAction?: boolean
+    savedToRAG?: boolean
   }
 }
 
@@ -413,24 +417,25 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
       const mergedContext = [systemPrompt, userPrompt].filter(Boolean).join('\n\n')
       const analysis = await AIProcessor.summarizeDocument(`${mergedContext}\n\n${extractedText.text}`, key)
       
-      // Add analysis message
+      // Add analysis message with save/discard options
       const analysisMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: `📊 **Document Analysis**\n\n**Summary:** ${analysis.summary}\n\n**Key Points:**\n${analysis.keyPoints.map(point => `• ${point}`).join('\n')}\n\n**Sentiment:** ${analysis.sentiment} (Confidence: ${Math.round(analysis.confidence * 100)}%)`,
         role: "assistant",
         timestamp: new Date(),
         type: "analysis",
-        metadata: { analysis }
+        metadata: { 
+          analysis,
+          file: file,
+          extractedText: extractedText,
+          requiresAction: true // Flag to show save/discard options
+        }
       }
       
       setMessages(prev => [...prev, analysisMessage])
 
-      // Store in database (if Supabase is configured)
-      try {
-        await storeDocument(file, extractedText, analysis)
-      } catch (dbError) {
-        console.warn('Failed to store document in database:', dbError)
-      }
+      // Don't auto-store - let user choose
+      // The save/discard options will be handled by the UI
 
     } catch (error) {
       console.error('Error processing file:', error)
@@ -448,8 +453,8 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
     }
   }
 
-  // Store document in database
-  const storeDocument = async (file: File, extractedText: any, analysis: DocumentAnalysis) => {
+  // Store document in RAG database
+  const saveToRAG = async (file: File, extractedText: any, analysis: DocumentAnalysis) => {
     try {
       const res = await fetch('/api/documents', {
         method: 'POST',
@@ -464,26 +469,36 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
             keyPoints: analysis.keyPoints,
             sentiment: analysis.sentiment,
             confidence: analysis.confidence,
-            wordCount: extractedText.metadata.wordCount
+            wordCount: extractedText.metadata.wordCount,
+            storedInRAG: true,
+            storedAt: new Date().toISOString()
           },
           user_id: isGuest ? 'guest' : (user?.id || 'anonymous')
         })
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed to store document')
-      console.log('Document stored successfully:', json.document)
+      if (!res.ok) throw new Error(json.error || 'Failed to store document in RAG')
+      console.log('Document saved to RAG successfully:', json.document)
+      return true
     } catch (error) {
       if (error instanceof Error) {
-        console.error('Database error:', error.message)
+        console.error('RAG storage error:', error.message)
+        throw error
       } else {
         try {
-          console.error('Database error:', JSON.stringify(error))
+          console.error('RAG storage error:', JSON.stringify(error))
+          throw new Error('Failed to store document in RAG')
         } catch {
-          console.error('Database error (raw):', error)
+          console.error('RAG storage error (raw):', error)
+          throw new Error('Failed to store document in RAG')
         }
       }
-      // Do not propagate to UI; continue without DB persistence
     }
+  }
+
+  // Discard document (remove from analysis)
+  const discardDocument = (messageId: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== messageId))
   }
 
   // Handle voice recording
@@ -799,6 +814,32 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
               }}>📎 File Upload</span>
               <p style={{ fontSize: '14px', fontWeight: '500', marginTop: '4px', margin: '4px 0 0 0' }}>{message.metadata?.fileName}</p>
               <p style={{ fontSize: '12px', color: isDarkMode ? '#9ca3af' : '#475569', margin: '0' }}>{message.metadata?.fileSize}</p>
+              
+              {/* File type indicator */}
+              {message.metadata?.fileName && (
+                <div style={{
+                  marginTop: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  {message.metadata.fileName.toLowerCase().endsWith('.pdf') && (
+                    <span style={{ fontSize: '10px', color: '#dc2626' }}>📄 PDF</span>
+                  )}
+                  {message.metadata.fileName.toLowerCase().endsWith('.csv') && (
+                    <span style={{ fontSize: '10px', color: '#059669' }}>📊 CSV</span>
+                  )}
+                  {message.metadata.fileName.toLowerCase().match(/\.(wav|mp3|m4a)$/i) && (
+                    <span style={{ fontSize: '10px', color: '#7c3aed' }}>🎵 Audio</span>
+                  )}
+                  {message.metadata.fileName.toLowerCase().match(/\.(doc|docx)$/i) && (
+                    <span style={{ fontSize: '10px', color: '#2563eb' }}>📝 Word</span>
+                  )}
+                  {message.metadata.fileName.toLowerCase().endsWith('.txt') && (
+                    <span style={{ fontSize: '10px', color: '#6b7280' }}>📄 Text</span>
+                  )}
+                </div>
+              )}
             </div>
           )}
           
@@ -835,6 +876,109 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
           }}>
             {message.content}
           </div>
+
+          {/* Save/Discard Actions for Analysis Messages */}
+          {message.type === "analysis" && message.metadata?.requiresAction && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+              borderRadius: '8px',
+              border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
+            }}>
+              <p style={{
+                fontSize: '12px',
+                color: isDarkMode ? '#9ca3af' : '#6b7280',
+                margin: '0 0 12px 0',
+                fontWeight: '500'
+              }}>
+                🤔 What would you like to do with this document?
+              </p>
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={async () => {
+                    try {
+                      if (message.metadata?.file && message.metadata?.extractedText && message.metadata?.analysis) {
+                        await saveToRAG(message.metadata.file, message.metadata.extractedText, message.metadata.analysis)
+                        // Update message to show it's saved
+                        setMessages(prev => prev.map(msg => 
+                          msg.id === message.id 
+                            ? { ...msg, metadata: { ...msg.metadata, requiresAction: false, savedToRAG: true } }
+                            : msg
+                        ))
+                      }
+                    } catch (error) {
+                      console.error('Failed to save to RAG:', error)
+                      // Show error message
+                      setMessages(prev => [...prev, {
+                        id: Date.now().toString(),
+                        content: `❌ Failed to save document to RAG: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                        role: "assistant",
+                        timestamp: new Date(),
+                        type: "text"
+                      }])
+                    }
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Save document to RAG for future search and AI queries"
+                >
+                  💾 Save to RAG
+                </button>
+                <button
+                  onClick={() => discardDocument(message.id)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.8)' : '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Discard document analysis"
+                >
+                  🗑️ Discard
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Show saved status */}
+          {message.type === "analysis" && message.metadata?.savedToRAG && (
+            <div style={{
+              marginTop: '12px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              color: '#166534',
+              borderRadius: '6px',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              ✅ Saved to RAG - Document is now searchable and available for AI queries
+            </div>
+          )}
         </div>
         
         {message.role === "assistant" && (
