@@ -1,7 +1,9 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { Send, Sun, Moon, Paperclip, Mic, Volume2, Settings, LogOut } from "lucide-react"
+import { Send, Sun, Moon, Paperclip, Mic, Volume2, Settings, LogOut, Calendar as CalendarIcon, LogIn } from "lucide-react"
+import CalendarModal from "@/components/calendar/calendar-modal"
+import AuthModal from "@/components/auth/auth-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AIProcessor } from "@/lib/ai-processing"
@@ -56,6 +58,8 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
   const [selectedVoice, setSelectedVoice] = useState<string>("browser")
   const [availableVoices, setAvailableVoices] = useState<{ value: string; label: string }[]>([])
   const [voiceSynthesizer, setVoiceSynthesizer] = useState<VoiceSynthesizer | null>(null)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const [isAuthOpen, setIsAuthOpen] = useState(false)
   const [volume, setVolume] = useState(1.0)
   // Drag state for message bubbles
   const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({})
@@ -106,6 +110,47 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
   const messagesHeightPx = Math.max(220, Math.min(viewportH - 160, Math.round(viewportH * messagesHeightRatio)))
 
   // Light/Dark aware UI tokens
+  // Keyboard shortcuts to open windows (Alt+C calendar, Alt+A auth)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+        setIsCalendarOpen(true)
+        try { window.location.hash = '#calendar' } catch {}
+      }
+      if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+        setIsAuthOpen(true)
+        try { window.location.hash = '#auth' } catch {}
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const handleOpenCalendar = () => {
+    try { console.debug('[UI] Open Calendar clicked') } catch {}
+    setIsCalendarOpen(true)
+    try { window.location.hash = '#calendar' } catch {}
+  }
+  const handleOpenAuth = () => {
+    try { console.debug('[UI] Open Auth clicked') } catch {}
+    console.log('🔐 Setting auth modal to open, current state:', { isAuthOpen, user })
+    setIsAuthOpen(true)
+    try { window.location.hash = '#auth' } catch {}
+    console.log('🔐 Auth modal state after set:', { isAuthOpen: true, user })
+  }
+
+  // Open via hash for reliability (and to debug routing)
+  useEffect(() => {
+    const applyHash = () => {
+      const h = typeof window !== 'undefined' ? window.location.hash : ''
+      if (h === '#calendar') setIsCalendarOpen(true)
+      if (h === '#auth') setIsAuthOpen(true)
+      if (h === '#close') { setIsCalendarOpen(false); setIsAuthOpen(false) }
+    }
+    applyHash()
+    window.addEventListener('hashchange', applyHash)
+    return () => window.removeEventListener('hashchange', applyHash)
+  }, [])
   const ui = {
     bgGlass: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.06)',
     borderGlass: isDarkMode ? 'rgba(255,255,255,0.20)' : 'rgba(15,23,42,0.12)',
@@ -826,6 +871,9 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
     )
   }
 
+  // Debug auth modal state
+  console.log('🔐 Auth modal state before render:', { isAuthOpen, user, isDarkMode })
+
   return (
     <div style={{
       position: 'relative',
@@ -897,6 +945,29 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
             alignItems: 'center',
             gap: '12px'
           }}>
+            {/* Calendar (navigate) */}
+            <button
+              onClick={handleOpenCalendar}
+              aria-label="Calendar"
+              title="Calendar"
+              style={{
+                borderRadius: '50%',
+                padding: '8px',
+                backgroundColor: ui.controlBg,
+                border: `1px solid ${ui.controlBorder}`,
+                color: ui.textPrimary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                cursor: 'pointer'
+              }}
+            >
+              <CalendarIcon size={16} />
+            </button>
+            {/* tiny live state indicator */}
+            {isCalendarOpen && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#22d3ee' }} />}
             {/* Volume Control */}
             <div style={{
               display: 'flex',
@@ -995,6 +1066,31 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
                 <LogOut size={16} />
               </button>
             )}
+
+            {/* Sign in (navigate, only when signed out) */}
+            {!user && (
+              <button
+                onClick={handleOpenAuth}
+                aria-label="Sign in"
+                title="Sign in"
+                style={{
+                  borderRadius: '50%',
+                  padding: '8px',
+                  backgroundColor: ui.controlBg,
+                  border: `1px solid ${ui.controlBorder}`,
+                  color: ui.textPrimary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '36px',
+                  height: '36px',
+                  cursor: 'pointer'
+                }}
+              >
+                <LogIn size={16} />
+              </button>
+            )}
+            {(!user && isAuthOpen) && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#22d3ee' }} />}
           </div>
         </nav>
 
@@ -1235,12 +1331,26 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         </div>
       </div>
 
-      {/* Settings Panel */}
+      {/* Settings Panel (portalized within component handles its own overlay) */}
       <SettingsPanel
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         isDarkMode={isDarkMode}
         onSettingsSaved={loadUserSettings}
+      />
+
+      {/* Calendar Window */}
+      <CalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Auth/Login Window */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        isDarkMode={isDarkMode}
       />
 
       <style jsx>{`

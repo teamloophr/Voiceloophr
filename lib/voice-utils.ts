@@ -772,6 +772,135 @@ export class VoiceSynthesizer {
   }
 }
 
+/**
+ * Text-to-Speech utility that integrates with existing playback controls
+ */
+export class TextToSpeech {
+  private utterance: SpeechSynthesisUtterance | null = null
+  private isSpeaking = false
+  private currentRate = 1.0
+  private currentVolume = 1.0
+
+  constructor() {
+    // Initialize with default settings
+    this.currentRate = 1.0
+    this.currentVolume = 1.0
+  }
+
+  /**
+   * Set the speech rate (0.1 to 10.0)
+   */
+  setRate(rate: number) {
+    this.currentRate = Math.max(0.1, Math.min(10.0, rate))
+    if (this.utterance) {
+      this.utterance.rate = this.currentRate
+    }
+  }
+
+  /**
+   * Set the speech volume (0.0 to 1.0)
+   */
+  setVolume(volume: number) {
+    this.currentVolume = Math.max(0.0, Math.min(1.0, volume))
+    if (this.utterance) {
+      this.utterance.volume = this.currentVolume
+    }
+  }
+
+  /**
+   * Speak the given text
+   */
+  speak(text: string, options?: { rate?: number; volume?: number; pitch?: number }) {
+    // Stop any current speech
+    this.stop()
+
+    if (!('speechSynthesis' in window)) {
+      console.warn('Speech synthesis not supported')
+      return
+    }
+
+    // Create new utterance
+    this.utterance = new SpeechSynthesisUtterance(text)
+    
+    // Apply settings
+    this.utterance.rate = options?.rate ?? this.currentRate
+    this.utterance.volume = options?.volume ?? this.currentVolume
+    this.utterance.pitch = options?.pitch ?? 1.0
+
+    // Set up event handlers
+    this.utterance.onstart = () => {
+      this.isSpeaking = true
+      console.log('Text-to-speech started')
+    }
+
+    this.utterance.onend = () => {
+      this.isSpeaking = false
+      this.utterance = null
+      console.log('Text-to-speech ended')
+    }
+
+    this.utterance.onerror = (event) => {
+      this.isSpeaking = false
+      this.utterance = null
+      console.error('Text-to-speech error:', event.error)
+    }
+
+    // Start speaking
+    speechSynthesis.speak(this.utterance)
+  }
+
+  /**
+   * Stop current speech
+   */
+  stop() {
+    if (this.isSpeaking && this.utterance) {
+      speechSynthesis.cancel()
+      this.isSpeaking = false
+      this.utterance = null
+    }
+  }
+
+  /**
+   * Pause current speech
+   */
+  pause() {
+    if (this.isSpeaking) {
+      speechSynthesis.pause()
+    }
+  }
+
+  /**
+   * Resume paused speech
+   */
+  resume() {
+    if (this.isSpeaking) {
+      speechSynthesis.resume()
+    }
+  }
+
+  /**
+   * Check if currently speaking
+   */
+  getIsSpeaking(): boolean {
+    return this.isSpeaking
+  }
+
+  /**
+   * Get current speech rate
+   */
+  getRate(): number {
+    return this.currentRate
+  }
+
+  /**
+   * Get current speech volume
+   */
+  getVolume(): number {
+    return this.currentVolume
+  }
+}
+
 // Global instances
 export const voiceRecognition = new VoiceRecognition()
 export const voiceSynthesis = new VoiceSynthesis()
+export const textToSpeech = new TextToSpeech()

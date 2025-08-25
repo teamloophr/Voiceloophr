@@ -34,8 +34,7 @@ export default function Page() {
           <EnhancedChatInterface isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
         </div>
 
-        {/* Authentication Container */}
-        <AuthContainer isDarkMode={isDarkMode} />
+        {/* AuthContainer is shown via AuthModal from navbar */}
       </div>
     </AuthProvider>
   )

@@ -1,122 +1,238 @@
-<p align="center">
-  <img src="https://automationalien.s3.us-east-1.amazonaws.com/VoiceLoopLogoBlack.png" alt="VoiceLoopHR" width="200" />
-</p>
+# VoiceLoopHR 🎤📅🔐
 
-# VoiceLoopHR
+A modern, AI-powered HR management platform with voice interaction, calendar management, and secure authentication - all accessible through intuitive modal windows.
 
-AI‑powered HR assistant — document analysis, semantic search, voice, and calendar integrations built on Next.js.
+![VoiceLoopHR](https://img.shields.io/badge/Next.js-15.5.0-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
+![Supabase](https://img.shields.io/badge/Supabase-8.0-green?style=for-the-badge&logo=supabase)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0-38B2AC?style=for-the-badge&logo=tailwind-css)
 
-<p align="center">
-  <a href="https://github.com/teamloophr/Voiceloophr">GitHub</a> ·
-  <a href="#setup">Setup</a> ·
-  <a href="#status">Status</a> ·
-  <a href="#security--bug-bounty">Security</a>
-</p>
+## ✨ Features
 
----
+### 🎤 Voice-First Interface
+- **Voice Queries**: Ask HR questions naturally using speech
+- **Voice Transcription**: Convert voice to text for document processing
+- **Text-to-Speech**: Built-in accessibility with customizable playback controls
+- **Multi-language Support**: International voice recognition capabilities
 
-## Status
+### 📅 Smart Calendar System
+- **Modal Windows**: Calendar opens as draggable windows, not separate pages
+- **Event Management**: Create, edit, and manage HR events and interviews
+- **Interview Scheduler**: Dedicated interface for scheduling candidate interviews
+- **Real-time Updates**: Live calendar synchronization across the platform
 
-- App: Next.js 15 + TypeScript
-- PDF extraction: byte‑only `pdf-parse` (server) — scanning/OCR fallback planned
-- Audit: `pnpm audit --prod` shows no known vulnerabilities
-- Mobile: optimized; page scrollbar removed; internal areas scroll with hidden bars
+### 🔐 Secure Authentication
+- **Supabase Integration**: Enterprise-grade authentication with Row Level Security
+- **Guest Mode**: Development and testing without authentication barriers
+- **Modal Interface**: Sign-in/sign-up through elegant popup windows
+- **Theme-Aware**: Automatic light/dark mode detection and switching
 
-> Found a bug? See [BUG_BOUNTY.md](./BUG_BOUNTY.md) for the PDF parsing bounty and how to help.
+### 🤖 AI-Powered HR Assistant
+- **Document Analysis**: AI-powered PDF parsing and summarization
+- **Smart Search**: Intelligent candidate and document search
+- **Voice Interaction**: Natural language HR queries and responses
+- **Context Awareness**: Remembers conversation history and user preferences
 
-## Features
+### 🎨 Modern UI/UX
+- **Responsive Design**: Works seamlessly on all device sizes
+- **Theme Support**: Automatic light/dark mode with true black backgrounds
+- **Draggable Windows**: Intuitive modal system for all major functions
+- **Accessibility**: Screen reader support and keyboard navigation
 
-- Document upload and AI analysis (summary, key points, sentiment)
-- Semantic search (Supabase + embeddings)
-- Voice recording with Whisper transcription (server endpoint)
-- TTS playback with play/pause/rewind/FF and speed toggle
-- Guest mode + user settings (OpenAI key, ElevenLabs key, visual controls)
-- Wave background with customizable hue and gradual color change
-
-## Setup
+## 🚀 Quick Start
 
 ### Prerequisites
-- Node 20+
-- pnpm 9+
-- Supabase project (optional for persistence/search)
+- Node.js 18+ 
+- pnpm (recommended) or npm
+- Supabase account
 
-### 1) Install
-```bash
-pnpm install
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/voiceloophr.git
+   cd voiceloophr
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pnpm install
+   # or
+   npm install
+   ```
+
+3. **Environment Setup**
+   ```bash
+   cp env.example .env.local
+   ```
+   
+   Update `.env.local` with your Supabase credentials:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+   ```
+
+4. **Database Setup**
+   ```bash
+   # Run the SQL scripts in your Supabase SQL editor
+   # scripts/01-create-tables.sql
+   # scripts/02-hr-documents-table.sql
+   # scripts/03-user-settings-table.sql
+   # scripts/04-calendar-rls.sql
+   ```
+
+5. **Start Development Server**
+   ```bash
+   pnpm dev
+   # or
+   npm run dev
+   ```
+
+6. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 🏗️ Architecture
+
+### Frontend
+- **Next.js 15**: React framework with App Router
+- **TypeScript**: Type-safe development
+- **Tailwind CSS**: Utility-first styling
+- **Shadcn UI**: Modern component library
+- **Three.js**: Interactive background animations
+
+### Backend
+- **Next.js API Routes**: Serverless API endpoints
+- **Supabase**: Database, authentication, and real-time features
+- **PostgreSQL**: Relational database with RLS policies
+- **Row Level Security**: Data isolation and user privacy
+
+### Key Components
+- **Enhanced Chat Interface**: Main application hub
+- **Calendar Modal**: Draggable calendar window
+- **Auth Modal**: Authentication interface
+- **Voice Recorder**: Speech input and processing
+- **Document Manager**: File upload and analysis
+
+## 🎯 Usage
+
+### Voice Commands
+- **"Open calendar"** → Opens calendar modal
+- **"Schedule interview"** → Opens interview scheduler
+- **"Sign in"** → Opens authentication modal
+- **"Analyze document"** → Opens document upload
+
+### Keyboard Shortcuts
+- **Alt + C** → Open calendar
+- **Alt + A** → Open authentication
+- **Alt + S** → Open settings
+- **Escape** → Close any modal
+
+### Modal Navigation
+- **Drag and Drop**: All modals are draggable windows
+- **Click Outside**: Click backdrop to close modals
+- **Responsive**: Modals adapt to screen size automatically
+
+## 🔧 Configuration
+
+### Voice Settings
+- **Speech Rate**: Adjust text-to-speech speed
+- **Volume Control**: Integrated with system audio
+- **Language**: Support for multiple languages
+- **Voice Selection**: Choose from available system voices
+
+### Theme Configuration
+- **Auto-detect**: Automatic light/dark mode switching
+- **Manual Override**: Force specific theme
+- **True Black**: Dark mode uses pure black backgrounds
+- **Custom Colors**: Extensible color system
+
+## 📁 Project Structure
+
+```
+voiceloophr/
+├── app/                    # Next.js App Router
+│   ├── api/               # API endpoints
+│   ├── ai-assistant/      # AI chat interface
+│   ├── calendar/          # Calendar pages
+│   ├── documents/         # Document management
+│   └── voice/             # Voice interface
+├── components/             # React components
+│   ├── ai/                # AI assistant components
+│   ├── auth/              # Authentication components
+│   ├── calendar/          # Calendar components
+│   ├── chat/              # Chat interface
+│   ├── documents/         # Document components
+│   ├── voice/             # Voice components
+│   └── ui/                # Reusable UI components
+├── contexts/               # React contexts
+├── lib/                    # Utility functions
+├── scripts/                # Database setup scripts
+├── types/                  # TypeScript type definitions
+└── public/                 # Static assets
 ```
 
-### 2) Environment
-Create `.env.local` in the project root:
+## 🧪 Development
+
+### Available Scripts
 ```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# OpenAI (server preferred)
-OPENAI_API_KEY=sk-...
-# Optional public key for client-only demos
-# NEXT_PUBLIC_OPENAI_API_KEY=sk-...
-
-# App
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+pnpm dev          # Start development server
+pnpm build        # Build for production
+pnpm start        # Start production server
+pnpm lint         # Run ESLint
+pnpm type-check   # Run TypeScript compiler
 ```
 
-### 3) Database (optional)
-Run `scripts/02-hr-documents-table.sql` in Supabase SQL editor to create `hr_documents` (pgvector).
+### Code Quality
+- **ESLint**: Code linting and formatting
+- **TypeScript**: Static type checking
+- **Prettier**: Code formatting (via ESLint)
+- **Husky**: Git hooks for quality assurance
 
-### 4) Dev
-```bash
-pnpm dev
-```
+## 🚀 Deployment
 
-### 5) Build
-```bash
-pnpm build
-pnpm start
-```
+### Vercel (Recommended)
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
 
-## Architecture
+### Other Platforms
+- **Netlify**: Static site generation
+- **Railway**: Full-stack deployment
+- **Docker**: Containerized deployment
 
-- App Router (Next.js)
-- API routes:
-  - `POST /api/ai/transcribe` Whisper transcription
-  - `POST /api/documents/extract` PDF/DOCX/TXT extraction (byte‑only)
-  - `POST /api/documents` persist to Supabase (service role)
-- Libraries: `pdf-parse` (PDF), `mammoth` (DOCX), `@supabase/supabase-js`
+## 🤝 Contributing
 
-## Troubleshooting
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-- PDF fails with path‑like messages: paths are scrubbed; if text is empty, it’s likely a scanned PDF. OCR fallback is planned. See [BUG_BOUNTY.md](./BUG_BOUNTY.md).
-- “Incorrect API key”: ensure your API key is valid or add it in Settings (guest mode) and refresh.
-- Supabase insert error (UUID): table SQL applied and env vars set? Guests omit `user_id`.
+### Development Guidelines
+- Follow TypeScript best practices
+- Use conventional commit messages
+- Ensure all tests pass
+- Update documentation for new features
 
-## Scripts
+## 📄 License
 
-```bash
-pnpm audit --prod      # security audit (prod deps)
-pnpm tsc --noEmit      # type check (requires TypeScript installed)
-pnpm lint              # run lints (if configured)
-```
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Security & Bug Bounty
+## 🙏 Acknowledgments
 
-See [BUG_BOUNTY.md](./BUG_BOUNTY.md) for the PDF extraction issue and mitigations.
-Before pushing public:
-- Ensure `.env*` files are ignored
-- Run `pnpm audit --prod`
-- Scan for secrets (e.g., secretlint/trufflehog)
+- **Supabase** for backend infrastructure
+- **Next.js** for the React framework
+- **Tailwind CSS** for styling utilities
+- **Shadcn UI** for component library
+- **Three.js** for 3D animations
 
-## Contributing
+## 📞 Support
 
-PRs welcome for:
-- OCR fallback for scanned PDFs
-- Robust pdf.js workerless server extraction
-- Improved search UI/filters
-
-## License
-TBD
+- **Issues**: [GitHub Issues](https://github.com/yourusername/voiceloophr/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/voiceloophr/discussions)
+- **Documentation**: [Wiki](https://github.com/yourusername/voiceloophr/wiki)
 
 ---
 
-Logo: `https://automationalien.s3.us-east-1.amazonaws.com/VoiceLoopLogoBlack.png`  
-Repo: `https://github.com/teamloophr/Voiceloophr`
+**Built with ❤️ for modern HR teams**

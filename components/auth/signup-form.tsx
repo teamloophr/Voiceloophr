@@ -27,6 +27,9 @@ export function SignUpForm({ onSwitchToLogin, isDarkMode }: SignUpFormProps) {
   
   const { signUp, signInAsGuest } = useAuth()
 
+  // Debug: Log when component renders
+  console.log('SignUpForm rendering, isDarkMode:', isDarkMode)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Clock, Mic } from "lucide-react"
 import { calendarManager, parseVoiceSchedulingRequest, type CalendarEvent } from "@/lib/calendar-utils"
 
-export function InterviewScheduler() {
+export function InterviewScheduler({ isDarkMode = false }: { isDarkMode?: boolean }) {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -127,199 +127,505 @@ export function InterviewScheduler() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-gray-200">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-blue-600" />
-            <span>Schedule Interview</span>
-          </CardTitle>
-          <CardDescription>Schedule interviews with candidates and manage appointments</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Voice Input Toggle */}
-          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-            <div>
-              <h4 className="text-sm font-medium text-blue-900">Voice Scheduling</h4>
-              <p className="text-xs text-blue-700">Use natural language to schedule interviews</p>
+    <div style={{
+      background: isDarkMode ? '#000000' : '#ffffff',
+      border: '1px solid rgba(0,0,0,0.1)',
+      borderRadius: '12px',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+      overflow: 'hidden'
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '24px',
+        borderBottom: '1px solid rgba(0,0,0,0.1)',
+        background: isDarkMode ? '#111111' : '#f9fafb'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '8px'
+            }}>
+              <span style={{
+                fontSize: '24px',
+                color: '#2563eb'
+              }}>📅</span>
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: '600',
+                color: isDarkMode ? '#ffffff' : '#111827'
+              }}>
+                Schedule Interview
+              </h2>
+              <button
+                onClick={() => {
+                  const formText = `Interview Scheduler. ${formData.title ? `Title: ${formData.title}. ` : ''}${formData.candidateEmail ? `Candidate: ${formData.candidateEmail}. ` : ''}${formData.date ? `Date: ${formData.date}. ` : ''}${formData.time ? `Time: ${formData.time}. ` : ''}${formData.duration ? `Duration: ${formData.duration} minutes. ` : ''}${formData.location ? `Location: ${formData.location}. ` : ''}${formData.description ? `Description: ${formData.description}.` : ''}`
+                  if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(formText)
+                    utterance.rate = 1.0
+                    utterance.pitch = 1.0
+                    utterance.volume = 1.0
+                    speechSynthesis.speak(utterance)
+                  }
+                }}
+                style={{
+                  padding: '6px',
+                  borderRadius: '50%',
+                  border: '1px solid rgba(0,0,0,0.1)',
+                  background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  color: isDarkMode ? '#e5e7eb' : '#6b7280',
+                  transition: 'all 0.2s ease',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.08)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)'
+                }}
+                title="Read form aloud"
+                aria-label="Read form aloud"
+              >
+                🔊
+              </button>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowVoiceInput(!showVoiceInput)}
-              className="border-blue-600 text-blue-600"
-            >
-              <Mic className="h-4 w-4 mr-1" />
-              Voice
-            </Button>
+            <p style={{
+              fontSize: '14px',
+              color: isDarkMode ? '#9ca3af' : '#6b7280'
+            }}>
+              Schedule interviews with candidates and manage appointments
+            </p>
           </div>
+          
+          {/* Voice Scheduling Button */}
+          <button
+            onClick={() => setShowVoiceInput(!showVoiceInput)}
+            style={{
+              padding: '12px 20px',
+              borderRadius: '8px',
+              border: '1px solid rgba(0,0,0,0.1)',
+              background: isDarkMode ? '#1a1a1a' : '#f3f4f6',
+              color: isDarkMode ? '#ffffff' : '#111827',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            🎤 Voice
+          </button>
+        </div>
+      </div>
 
-          {/* Voice Input */}
-          {showVoiceInput && (
-            <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
-              <Label htmlFor="voiceInput">Voice Command</Label>
-              <Textarea
-                id="voiceInput"
-                placeholder="Say something like: 'Schedule an interview with john@example.com tomorrow at 2 PM for 1 hour'"
-                value={voiceInput}
-                onChange={(e) => setVoiceInput(e.target.value)}
-                className="min-h-[80px]"
-              />
-              <div className="flex space-x-2">
-                <Button onClick={handleVoiceScheduling} size="sm" className="bg-blue-600 hover:bg-blue-700">
-                  Parse Voice Command
-                </Button>
-                <Button onClick={() => setShowVoiceInput(false)} size="sm" variant="outline">
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
+      {/* Voice Input Section */}
+      {showVoiceInput && (
+        <div style={{
+          padding: '20px 24px',
+          borderBottom: '1px solid rgba(0,0,0,0.1)',
+          background: isDarkMode ? '#0a0a0a' : '#f8fafc'
+        }}>
+          <h3 style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            marginBottom: '12px',
+            color: isDarkMode ? '#ffffff' : '#111827'
+          }}>
+            Voice Scheduling
+          </h3>
+          <p style={{
+            fontSize: '14px',
+            color: isDarkMode ? '#9ca3af' : '#6b7280',
+            marginBottom: '16px'
+          }}>
+            Use natural language to schedule interviews
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '12px'
+          }}>
+            <input
+              type="text"
+              placeholder="e.g., 'Schedule a technical interview with John for tomorrow at 2 PM'"
+              value={voiceInput}
+              onChange={(e) => setVoiceInput(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '12px 16px',
+                border: '1px solid rgba(0,0,0,0.2)',
+                borderRadius: '8px',
+                background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                color: isDarkMode ? '#ffffff' : '#111827',
+                fontSize: '14px'
+              }}
+            />
+            <button
+              onClick={handleVoiceScheduling}
+              style={{
+                padding: '12px 20px',
+                borderRadius: '8px',
+                border: 'none',
+                background: '#2563eb',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Process
+            </button>
+          </div>
+        </div>
+      )}
 
-          {/* Form Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Interview Title *</Label>
-              <Input
-                id="title"
+      {/* Form Content */}
+      <div style={{ padding: '24px' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '24px'
+        }}>
+          {/* Left Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Interview Title */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                marginBottom: '8px',
+                color: isDarkMode ? '#ffffff' : '#111827'
+              }}>
+                Interview Title *
+              </label>
+              <input
+                type="text"
                 placeholder="e.g., Technical Interview - Senior Developer"
                 value={formData.title}
                 onChange={(e) => handleInputChange("title", e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid rgba(0,0,0,0.2)',
+                  borderRadius: '8px',
+                  background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                  color: isDarkMode ? '#ffffff' : '#111827',
+                  fontSize: '14px'
+                }}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="type">Interview Type</Label>
-              <Select value={formData.type} onValueChange={(value) => handleInputChange("type", value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="interview">Interview</SelectItem>
-                  <SelectItem value="meeting">Meeting</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Interview Type */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                marginBottom: '8px',
+                color: isDarkMode ? '#ffffff' : '#111827'
+              }}>
+                Interview Type
+              </label>
+              <select
+                value={formData.type}
+                onChange={(e) => handleInputChange("type", e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid rgba(0,0,0,0.2)',
+                  borderRadius: '8px',
+                  background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                  color: isDarkMode ? '#ffffff' : '#111827',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="interview">Interview</option>
+                <option value="meeting">Meeting</option>
+                <option value="call">Call</option>
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="candidateEmail">Candidate Email *</Label>
-              <Input
-                id="candidateEmail"
+            {/* Candidate Email */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                marginBottom: '8px',
+                color: isDarkMode ? '#ffffff' : '#111827'
+              }}>
+                Candidate Email *
+              </label>
+              <input
                 type="email"
                 placeholder="candidate@example.com"
                 value={formData.candidateEmail}
                 onChange={(e) => handleInputChange("candidateEmail", e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid rgba(0,0,0,0.2)',
+                  borderRadius: '8px',
+                  background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                  color: isDarkMode ? '#ffffff' : '#111827',
+                  fontSize: '14px'
+                }}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="interviewerEmails">Interviewer Emails</Label>
-              <Input
-                id="interviewerEmails"
+            {/* Interviewer Emails */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                marginBottom: '8px',
+                color: isDarkMode ? '#ffffff' : '#111827'
+              }}>
+                Interviewer Emails
+              </label>
+              <input
+                type="text"
                 placeholder="interviewer1@company.com, interviewer2@company.com"
                 value={formData.interviewerEmails}
                 onChange={(e) => handleInputChange("interviewerEmails", e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="date">Date *</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => handleInputChange("date", e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="time">Time *</Label>
-              <Input
-                id="time"
-                type="time"
-                value={formData.time}
-                onChange={(e) => handleInputChange("time", e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="duration">Duration (minutes)</Label>
-              <Select value={formData.duration} onValueChange={(value) => handleInputChange("duration", value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30">30 minutes</SelectItem>
-                  <SelectItem value="45">45 minutes</SelectItem>
-                  <SelectItem value="60">1 hour</SelectItem>
-                  <SelectItem value="90">1.5 hours</SelectItem>
-                  <SelectItem value="120">2 hours</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                placeholder="Conference Room A or Zoom link"
-                value={formData.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid rgba(0,0,0,0.2)',
+                  borderRadius: '8px',
+                  background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                  color: isDarkMode ? '#ffffff' : '#111827',
+                  fontSize: '14px'
+                }}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Interview details, agenda, or special instructions..."
-              value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-            />
-          </div>
-
-          {/* Available Slots */}
-          {formData.date && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Available Time Slots</Label>
-                <Button size="sm" variant="outline" onClick={findAvailableSlots}>
-                  <Clock className="h-4 w-4 mr-1" />
-                  Find Slots
-                </Button>
+          {/* Right Column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Date and Time Row */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '16px'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                  color: isDarkMode ? '#ffffff' : '#111827'
+                }}>
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => handleInputChange("date", e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid rgba(0,0,0,0.2)',
+                    borderRadius: '8px',
+                    background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                    color: isDarkMode ? '#ffffff' : '#111827',
+                    fontSize: '14px'
+                  }}
+                />
               </div>
-              {availableSlots.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {availableSlots.slice(0, 6).map((slot, index) => (
-                    <Button
-                      key={index}
-                      size="sm"
-                      variant="outline"
-                      onClick={() => selectTimeSlot(slot)}
-                      className="text-xs"
-                    >
-                      {slot.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}{" "}
-                      {slot.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </Button>
-                  ))}
-                </div>
-              )}
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                  color: isDarkMode ? '#ffffff' : '#111827'
+                }}>
+                  Time *
+                </label>
+                <input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => handleInputChange("time", e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid rgba(0,0,0,0.2)',
+                    borderRadius: '8px',
+                    background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                    color: isDarkMode ? '#ffffff' : '#111827',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
             </div>
-          )}
 
-          {/* Actions */}
-          <div className="flex space-x-3 pt-4">
-            <Button onClick={handleScheduleInterview} disabled={isScheduling} className="bg-blue-600 hover:bg-blue-700">
-              {isScheduling ? "Scheduling..." : "Schedule Interview"}
-            </Button>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Reset Form
-            </Button>
+            {/* Duration and Location Row */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '16px'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                  color: isDarkMode ? '#ffffff' : '#111827'
+                }}>
+                  Duration (minutes)
+                </label>
+                <select
+                  value={formData.duration}
+                  onChange={(e) => handleInputChange("duration", e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid rgba(0,0,0,0.2)',
+                    borderRadius: '8px',
+                    background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                    color: isDarkMode ? '#ffffff' : '#111827',
+                    fontSize: '14px'
+                  }}
+                >
+                  <option value="30">30 minutes</option>
+                  <option value="45">45 minutes</option>
+                  <option value="60">1 hour</option>
+                  <option value="90">1.5 hours</option>
+                  <option value="120">2 hours</option>
+                </select>
+              </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                  color: isDarkMode ? '#ffffff' : '#111827'
+                }}>
+                  Location
+                </label>
+                <input
+                  type="text"
+                  placeholder="Conference Room A or Zoom link"
+                  value={formData.location}
+                  onChange={(e) => handleInputChange("location", e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid rgba(0,0,0,0.2)',
+                    borderRadius: '8px',
+                    background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                    color: isDarkMode ? '#ffffff' : '#111827',
+                    fontSize: '14px'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                marginBottom: '8px',
+                color: isDarkMode ? '#ffffff' : '#111827'
+              }}>
+                Description
+              </label>
+              <textarea
+                placeholder="Interview details, agenda, or special instructions..."
+                value={formData.description}
+                onChange={(e) => handleInputChange("description", e.target.value)}
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid rgba(0,0,0,0.2)',
+                  borderRadius: '8px',
+                  background: isDarkMode ? '#1a1a1a' : '#ffffff',
+                  color: isDarkMode ? '#ffffff' : '#111827',
+                  fontSize: '14px',
+                  resize: 'vertical',
+                  fontFamily: 'inherit'
+                }}
+              />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '16px',
+          marginTop: '32px',
+          paddingTop: '24px',
+          borderTop: '1px solid rgba(0,0,0,0.1)'
+        }}>
+          <button
+            onClick={() => {
+              setFormData({
+                title: "",
+                description: "",
+                candidateEmail: "",
+                interviewerEmails: "",
+                date: "",
+                time: "",
+                duration: "60",
+                location: "",
+                type: "interview",
+              })
+            }}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: '1px solid rgba(0,0,0,0.2)',
+              background: isDarkMode ? '#1a1a1a' : '#f3f4f6',
+              color: isDarkMode ? '#ffffff' : '#6b7280',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            Reset Form
+          </button>
+          <button
+            onClick={handleScheduleInterview}
+            disabled={isScheduling || !formData.title || !formData.date || !formData.time}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#2563eb',
+              color: 'white',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              opacity: (isScheduling || !formData.title || !formData.date || !formData.time) ? 0.6 : 1
+            }}
+          >
+            {isScheduling ? '⏳ Scheduling...' : '📅 Schedule Interview'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
