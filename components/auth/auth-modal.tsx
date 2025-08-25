@@ -180,24 +180,73 @@ export function AuthModal({ isOpen, onClose, isDarkMode }: AuthModalProps) {
             />
           </div>
 
-          {/* Test Content - Replace forms temporarily */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ textAlign: 'center' }}>
-              <h4 style={{
-                fontSize: '18px',
-                fontWeight: '500',
-                marginBottom: '8px',
-                color: isDarkMode ? '#e5e7eb' : '#111827'
-              }}>
-                Test Form Content
-              </h4>
-              <p style={{
-                fontSize: '14px',
-                color: isDarkMode ? '#9ca3af' : '#6b7280'
-              }}>
-                This is a test to see if the modal content is working
-              </p>
-            </div>
+          {/* Guest Sign-in Option - Prominent for Development */}
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '20px',
+            background: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
+            border: `2px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)'}`,
+            borderRadius: '12px',
+            marginBottom: '20px'
+          }}>
+            <h4 style={{
+              fontSize: '20px',
+              fontWeight: '600',
+              marginBottom: '12px',
+              color: isDarkMode ? '#22c55e' : '#16a34a'
+            }}>
+              🎭 Development Mode
+            </h4>
+            <p style={{
+              fontSize: '14px',
+              color: isDarkMode ? '#9ca3af' : '#6b7280',
+              marginBottom: '16px'
+            }}>
+              Skip authentication and test the app immediately
+            </p>
+            <button 
+              onClick={signInAsGuest}
+              style={{
+                padding: '14px 24px',
+                background: isDarkMode ? '#22c55e' : '#16a34a',
+                color: 'white',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDarkMode ? '#16a34a' : '#15803d'
+                e.currentTarget.style.transform = 'translateY(-2px)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isDarkMode ? '#22c55e' : '#16a34a'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
+            >
+              🚀 Sign in as Guest
+            </button>
+          </div>
+
+          {/* Regular Authentication Forms */}
+          <div style={{ 
+            textAlign: 'center',
+            padding: '16px',
+            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+            borderRadius: '8px',
+            background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+          }}>
+            <h4 style={{
+              fontSize: '16px',
+              fontWeight: '500',
+              marginBottom: '12px',
+              color: isDarkMode ? '#e5e7eb' : '#111827'
+            }}>
+              {mode === 'signin' ? 'Sign In' : 'Create Account'}
+            </h4>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input 

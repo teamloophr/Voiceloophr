@@ -1,6 +1,42 @@
-import { supabase } from './supabase'
-import { AIProcessor } from './ai-processing'
 import type { SearchResult } from './supabase'
+import { AIProcessor } from './ai-processing'
+
+// Lazy Supabase initialization to avoid build-time errors
+let supabaseClient: any = null
+
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    try {
+      // Only import and create client when actually needed
+      const { createClient } = require('@supabase/supabase-js')
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.warn('Supabase environment variables not available')
+        return null
+      }
+      
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+    } catch (error) {
+      console.warn('Failed to initialize Supabase client:', error)
+      return null
+    }
+  }
+  return supabaseClient
+}
+
+// Fallback search function when Supabase is not available
+function fallbackSearch(query: string): SearchResult[] {
+  return [{
+    id: 'fallback',
+    title: 'Search Unavailable',
+    content: 'Search functionality requires Supabase configuration',
+    similarity: 0,
+    relevanceScore: 0,
+    metadata: {}
+  }]
+}
 
 export interface SearchQuery {
   query: string
@@ -110,6 +146,14 @@ async function searchDocuments(query: SearchQuery): Promise<SearchResult[]> {
   try {
     // Generate embeddings for the search query
     const queryEmbedding = await AIProcessor.generateEmbeddings(query.query)
+    
+    // Get Supabase client (lazy initialization)
+    const supabase = getSupabaseClient()
+    
+    if (!supabase) {
+      console.warn('Supabase not available, using fallback search')
+      return fallbackSearch(query.query)
+    }
     
     // Perform vector similarity search
     const { data: searchResults, error } = await supabase.rpc('search_documents', {

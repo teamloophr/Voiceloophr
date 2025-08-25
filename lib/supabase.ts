@@ -4,7 +4,10 @@ import { config } from './config'
 const supabaseUrl = config.supabase.url
 const supabaseAnonKey = config.supabase.anonKey
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Only create client if environment variables are available
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
 
 // Database types for our HR documents
 export interface HRDocument {

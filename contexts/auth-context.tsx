@@ -28,6 +28,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Get initial session
+    if (!supabase) {
+      console.warn('Supabase not available, skipping session check')
+      setLoading(false)
+      return
+    }
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
@@ -47,6 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = async (email: string, password: string) => {
+    if (!supabase) {
+      throw new Error('Authentication service not available')
+    }
+    
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -62,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signUp = async (email: string, password: string) => {
+    if (!supabase) {
+      throw new Error('Authentication service not available')
+    }
+    
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -108,7 +122,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Clear guest settings from localStorage
         localStorage.removeItem('voiceloophr-guest-settings')
       } else {
-        await supabase.auth.signOut()
+        if (supabase) {
+          await supabase.auth.signOut()
+        }
       }
     } catch (error) {
       console.error("Error signing out:", error)
@@ -117,6 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string) => {
     try {
+      if (!supabase) {
+        throw new Error('Authentication service not available')
+      }
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       })
@@ -136,6 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return null
     
     try {
+      if (!supabase) {
+        throw new Error('Database service not available')
+      }
+      
       const { data, error } = await supabase
         .from('user_settings')
         .select('*')
@@ -164,6 +188,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return { error: "User not authenticated" }
     
     try {
+      if (!supabase) {
+        throw new Error('Database service not available')
+      }
+      
       const { error } = await supabase
         .from('user_settings')
         .upsert({
