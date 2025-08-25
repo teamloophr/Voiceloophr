@@ -1,114 +1,201 @@
 "use client"
 
-import type React from "react"
-import type { User, AuthState } from "@/lib/types"
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { supabase } from "@/lib/supabase"
+import type { User, Session } from "@supabase/supabase-js"
 
-import { createContext, useContext, useReducer, useEffect } from "react"
-
-interface AuthContextType extends AuthState {
-  signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, fullName: string) => Promise<void>
+interface AuthContextType {
+  user: User | null
+  session: Session | null
+  loading: boolean
+  isGuest: boolean
+  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signUp: (email: string, password: string) => Promise<{ error: any }>
+  signInAsGuest: () => Promise<void>
   signOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<{ error: any }>
+  getUserSettings: () => Promise<any>
+  saveUserSettings: (settings: any) => Promise<{ error: any }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-type AuthAction =
-  | { type: "SET_LOADING"; payload: boolean }
-  | { type: "SET_USER"; payload: User | null }
-  | { type: "SET_ERROR"; payload: string | null }
-
-function authReducer(state: AuthState, action: AuthAction): AuthState {
-  switch (action.type) {
-    case "SET_LOADING":
-      return { ...state, loading: action.payload }
-    case "SET_USER":
-      return { ...state, user: action.payload, loading: false, error: null }
-    case "SET_ERROR":
-      return { ...state, error: action.payload, loading: false }
-    default:
-      return state
-  }
-}
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(authReducer, {
-    user: null,
-    loading: true,
-    error: null,
-  })
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isGuest, setIsGuest] = useState(false)
 
   useEffect(() => {
-    // TODO: Check for existing session when Supabase is connected
-    console.log("[v0] Checking for existing auth session")
-    dispatch({ type: "SET_LOADING", payload: false })
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    dispatch({ type: "SET_LOADING", payload: true })
     try {
-      // TODO: Implement Supabase sign in
-      console.log("[v0] Sign in:", { email })
-
-      // Mock user for now
-      const mockUser: User = {
-        id: "mock-user-id",
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        full_name: "Mock User",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        password,
+      })
+      if (!error) {
+        setIsGuest(false)
       }
-
-      dispatch({ type: "SET_USER", payload: mockUser })
+      return { error }
     } catch (error) {
-      dispatch({ type: "SET_ERROR", payload: "Failed to sign in" })
+      return { error }
     }
   }
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    dispatch({ type: "SET_LOADING", payload: true })
+  const signUp = async (email: string, password: string) => {
     try {
-      // TODO: Implement Supabase sign up
-      console.log("[v0] Sign up:", { email, fullName })
-
-      // Mock user for now
-      const mockUser: User = {
-        id: "mock-user-id",
+      const { error } = await supabase.auth.signUp({
         email,
-        full_name: fullName,
+        password,
+      })
+      if (!error) {
+        setIsGuest(false)
+      }
+      return { error }
+    } catch (error) {
+      return { error }
+    }
+  }
+
+  const signInAsGuest = async () => {
+    try {
+      // Create a mock guest user
+      const guestUser = {
+        id: 'guest-' + Date.now(),
+        email: 'guest@voiceloophr.local',
+        user_metadata: { full_name: 'Guest User' },
+        app_metadata: { provider: 'guest' },
+        aud: 'authenticated',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }
+        role: 'guest'
+      } as User
 
-      dispatch({ type: "SET_USER", payload: mockUser })
+      setUser(guestUser)
+      setIsGuest(true)
+      setSession({ user: guestUser, access_token: 'guest-token', refresh_token: 'guest-token', expires_in: 3600, token_type: 'bearer' } as Session)
     } catch (error) {
-      dispatch({ type: "SET_ERROR", payload: "Failed to create account" })
+      console.error('Error signing in as guest:', error)
     }
   }
 
   const signOut = async () => {
-    dispatch({ type: "SET_LOADING", payload: true })
     try {
-      // TODO: Implement Supabase sign out
-      console.log("[v0] Sign out")
-      dispatch({ type: "SET_USER", payload: null })
+      if (isGuest) {
+        // Clear guest session
+        setUser(null)
+        setSession(null)
+        setIsGuest(false)
+        // Clear guest settings from localStorage
+        localStorage.removeItem('voiceloophr-guest-settings')
+      } else {
+        await supabase.auth.signOut()
+      }
     } catch (error) {
-      dispatch({ type: "SET_ERROR", payload: "Failed to sign out" })
+      console.error("Error signing out:", error)
     }
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        signIn,
-        signUp,
-        signOut,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      return { error }
+    } catch (error) {
+      return { error }
+    }
+  }
+
+  const getUserSettings = async () => {
+    if (isGuest) {
+      // For guests, get settings from localStorage
+      const guestSettings = localStorage.getItem('voiceloophr-guest-settings')
+      return guestSettings ? JSON.parse(guestSettings) : null
+    }
+    
+    if (!user) return null
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error("Error fetching user settings:", error)
+      return null
+    }
+  }
+
+  const saveUserSettings = async (settings: any) => {
+    if (isGuest) {
+      // For guests, save to localStorage
+      localStorage.setItem('voiceloophr-guest-settings', JSON.stringify({
+        ...settings,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }))
+      return { error: null }
+    }
+    
+    if (!user) return { error: "User not authenticated" }
+    
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          openai_api_key: settings.openaiApiKey,
+          supabase_url: settings.supabaseUrl,
+          supabase_anon_key: settings.supabaseAnonKey,
+          elevenlabs_api_key: settings.elevenLabsApiKey,
+          updated_at: new Date().toISOString()
+        })
+      
+      return { error }
+    } catch (error) {
+      return { error }
+    }
+  }
+
+  const value = {
+    user,
+    session,
+    loading,
+    isGuest,
+    signIn,
+    signUp,
+    signInAsGuest,
+    signOut,
+    resetPassword,
+    getUserSettings,
+    saveUserSettings,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

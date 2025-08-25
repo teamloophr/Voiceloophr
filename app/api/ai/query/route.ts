@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { generateAIResponse } from "@/lib/ai-processing"
+import { AIProcessor } from "@/lib/ai-processing"
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       "Jane Smith - Senior UX Designer with 7 years experience in design systems",
     ]
 
-    const response = await generateAIResponse(query, context)
+    const response = await AIProcessor.processHRQuery(`${context.join('\n')}\n\nQuestion: ${query}`)
 
     // TODO: Save query to database for tracking
     // await supabase.from('voice_queries').insert({

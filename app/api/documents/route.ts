@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
 // Mock documents data
 const mockDocuments = [
@@ -80,5 +81,55 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("[v0] Delete document error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const {
+      title,
+      content,
+      file_type,
+      file_size,
+      summary,
+      metadata,
+      user_id,
+    } = body || {}
+
+    const isUUID = (v: any) => typeof v === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(v)
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ error: "Supabase env vars missing" }, { status: 500 })
+    }
+    const admin = createClient(supabaseUrl, serviceRoleKey)
+
+    const payload: any = {
+      title,
+      content,
+      file_type,
+      file_size,
+      summary,
+      metadata,
+    }
+    if (isUUID(user_id)) payload.user_id = user_id
+
+    const { data, error } = await admin
+      .from('hr_documents')
+      .insert(payload)
+      .select('*')
+      .single()
+
+    if (error) {
+      console.error('[api/documents] upsert error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, document: data })
+  } catch (error: any) {
+    console.error('[api/documents] POST error:', error)
+    return NextResponse.json({ error: error?.message || 'Internal server error' }, { status: 500 })
   }
 }

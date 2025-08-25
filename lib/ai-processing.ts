@@ -1,137 +1,168 @@
-// AI processing utilities for document analysis
+import OpenAI from 'openai'
 
 export interface DocumentAnalysis {
   summary: string
-  keywords: string[]
-  sentiment?: "positive" | "neutral" | "negative"
-  skillsExtracted: string[]
-  experienceLevel?: "entry" | "mid" | "senior" | "executive"
-  contactInfo?: {
-    email?: string
-    phone?: string
-    location?: string
+  keyPoints: string[]
+  sentiment: 'positive' | 'negative' | 'neutral'
+  confidence: number
+}
+
+export interface TranscriptionResult {
+  text: string
+  language: string
+  confidence: number
+}
+
+export class AIProcessor {
+  private static getOpenAIClient(apiKey?: string) {
+    const envKey = (typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY) : undefined) as string | undefined
+    const key = apiKey || envKey
+    if (!key) {
+      throw new Error('OpenAI API key missing. Provide a key in settings or set NEXT_PUBLIC_OPENAI_API_KEY.')
+    }
+    return new OpenAI({ 
+      apiKey: key,
+      dangerouslyAllowBrowser: true // Allow browser usage
+    })
   }
-}
 
-export interface ProcessingOptions {
-  extractKeywords?: boolean
-  generateSummary?: boolean
-  analyzeSentiment?: boolean
-  extractSkills?: boolean
-  extractContactInfo?: boolean
-}
+  static async summarizeDocument(content: string, apiKey?: string): Promise<DocumentAnalysis> {
+    try {
+      const openai = this.getOpenAIClient(apiKey)
+      const text = (content || '').trim()
+      if (!text) {
+        return {
+          summary: 'No extractable text found in the document.',
+          keyPoints: [],
+          sentiment: 'neutral',
+          confidence: 0
+        }
+      }
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an HR expert. Analyze the user content and return ONLY a strict JSON object with keys: summary (string, 2-3 sentences), keyPoints (string[] of 3-6 concise points), sentiment (one of 'positive'|'negative'|'neutral'), confidence (0-100 number). No markdown, no prose, only JSON."
+          },
+          {
+            role: "user",
+            content: text
+          }
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+        max_tokens: 500
+      })
 
-export async function analyzeDocumentWithAI(
-  text: string,
-  filename: string,
-  options: ProcessingOptions = {},
-): Promise<DocumentAnalysis> {
-  const {
-    extractKeywords = true,
-    generateSummary = true,
-    analyzeSentiment = false,
-    extractSkills = true,
-    extractContactInfo = true,
-  } = options
+      const result = response.choices[0]?.message?.content
+      if (!result) {
+        throw new Error('No response from OpenAI')
+      }
 
-  try {
-    // TODO: Replace with actual OpenAI API call when user provides API key
-    console.log("[v0] Analyzing document:", filename)
-
-    // Simulate AI processing delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    // Mock analysis results based on document content
-    const mockAnalysis: DocumentAnalysis = generateMockAnalysis(text, filename)
-
-    return mockAnalysis
-  } catch (error) {
-    console.error("[v0] AI analysis error:", error)
-    throw new Error("Failed to analyze document with AI")
-  }
-}
-
-function generateMockAnalysis(text: string, filename: string): DocumentAnalysis {
-  // Generate realistic mock data based on filename and content patterns
-  const isResume = filename.toLowerCase().includes("resume") || filename.toLowerCase().includes("cv")
-
-  if (isResume) {
-    return {
-      summary:
-        "Experienced professional with strong technical background and proven track record in software development. Demonstrates expertise in modern web technologies and collaborative team environments.",
-      keywords: ["Software Development", "JavaScript", "React", "Node.js", "Team Leadership", "Problem Solving"],
-      sentiment: "positive",
-      skillsExtracted: ["JavaScript", "React", "Node.js", "TypeScript", "Git", "Agile", "REST APIs"],
-      experienceLevel: "mid",
-      contactInfo: {
-        email: "candidate@example.com",
-        phone: "+1 (555) 123-4567",
-        location: "San Francisco, CA",
-      },
+      try {
+        const parsed = JSON.parse(result)
+        return {
+          summary: parsed.summary || 'Summary not available',
+          keyPoints: parsed.keyPoints || [],
+          sentiment: parsed.sentiment || 'neutral',
+          confidence: parsed.confidence || 0
+        }
+      } catch (parseError) {
+        // Try to extract JSON from text (e.g., wrapped in fences)
+        try {
+          const match = result.match(/\{[\s\S]*\}/)
+          if (match) {
+            const parsed2 = JSON.parse(match[0])
+            return {
+              summary: parsed2.summary || 'Summary not available',
+              keyPoints: parsed2.keyPoints || [],
+              sentiment: parsed2.sentiment || 'neutral',
+              confidence: parsed2.confidence || 0
+            }
+          }
+        } catch {}
+        // Last resort fallback
+        return {
+          summary: result.substring(0, 200) + '...',
+          keyPoints: [],
+          sentiment: 'neutral',
+          confidence: 0
+        }
+      }
+    } catch (error) {
+      console.error('Error summarizing document:', error)
+      throw new Error(`Failed to summarize document: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
-  return {
-    summary: "Professional document containing relevant information for HR processing and analysis.",
-    keywords: ["Professional", "Experience", "Skills", "Background"],
-    sentiment: "neutral",
-    skillsExtracted: ["Communication", "Organization", "Analysis"],
-    experienceLevel: "mid",
-  }
-}
+  static async transcribeAudio(audioBlob: Blob, apiKey?: string): Promise<TranscriptionResult> {
+    try {
+      const openai = this.getOpenAIClient(apiKey)
+      
+      // Convert blob to base64
+      const arrayBuffer = await audioBlob.arrayBuffer()
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+      
+      const response = await openai.audio.transcriptions.create({
+        file: new File([audioBlob], 'audio.webm', { type: 'audio/webm' }),
+        model: "whisper-1",
+        response_format: "verbose_json"
+      })
 
-export async function generateAIResponse(query: string, context: string[]): Promise<string> {
-  try {
-    // TODO: Implement actual OpenAI chat completion when API key is available
-    console.log("[v0] Generating AI response for query:", query)
-
-    // Simulate processing time
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // Generate contextual mock response
-    return generateMockResponse(query, context)
-  } catch (error) {
-    console.error("[v0] AI response generation error:", error)
-    throw new Error("Failed to generate AI response")
-  }
-}
-
-function generateMockResponse(query: string, context: string[]): string {
-  const queryLower = query.toLowerCase()
-
-  if (queryLower.includes("candidate") || queryLower.includes("resume")) {
-    return "Based on the uploaded documents, I found 2 candidates that match your criteria. John Doe has 5 years of React experience, while Jane Smith specializes in UX design with 7 years of experience. Both candidates show strong technical skills and positive career progression."
+      return {
+        text: response.text,
+        language: response.language || 'en',
+        confidence: 0.9 // Whisper doesn't provide confidence, using default
+      }
+    } catch (error) {
+      console.error('Error transcribing audio:', error)
+      throw new Error(`Failed to transcribe audio: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
-  if (queryLower.includes("skill") || queryLower.includes("experience")) {
-    return "The most common skills across uploaded resumes include JavaScript (80%), React (60%), and Node.js (40%). The average experience level is 4-6 years, with candidates showing expertise in modern web development technologies."
+  static async generateEmbeddings(text: string, apiKey?: string): Promise<number[]> {
+    try {
+      const openai = this.getOpenAIClient(apiKey)
+      
+      const response = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: text,
+        dimensions: 1536
+      })
+
+      return response.data[0]?.embedding || []
+    } catch (error) {
+      console.error('Error generating embeddings:', error)
+      throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 
-  if (queryLower.includes("schedule") || queryLower.includes("interview")) {
-    return "I can help you schedule interviews with the candidates. Would you like me to set up interviews for this week? I can coordinate with their availability and send calendar invitations."
+  static async processHRQuery(query: string, apiKey?: string, context?: string): Promise<string> {
+    try {
+      const openai = this.getOpenAIClient(apiKey)
+      
+      const systemPrompt = `You are an AI-powered HR assistant. Provide helpful, professional, and accurate responses to HR-related questions. 
+      
+If context is provided, use it to give more relevant answers. Always be helpful, clear, and professional.`
+
+      const messages: Array<{ role: "system" | "user"; content: string }> = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: context ? `Context: ${context}\n\nQuestion: ${query}` : query }
+      ]
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        temperature: 0.7,
+        max_tokens: 500
+      })
+
+      return response.choices[0]?.message?.content || 'I apologize, but I was unable to process your request.'
+    } catch (error) {
+      console.error('Error processing HR query:', error)
+      throw new Error(`Failed to process query: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
-
-  return "I understand your query about the HR documents. Based on the available information, I can provide insights about candidate qualifications, skills analysis, and help with scheduling. What specific aspect would you like me to focus on?"
-}
-
-export function extractTextFromPDF(file: File): Promise<string> {
-  // TODO: Implement actual PDF text extraction using pdf-parse or similar
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(
-        `[Extracted text from ${file.name}]\n\nThis is placeholder text that would normally be extracted from the PDF document. In a real implementation, this would use libraries like pdf-parse to extract actual text content from PDF files.`,
-      )
-    }, 1000)
-  })
-}
-
-export function extractTextFromWord(file: File): Promise<string> {
-  // TODO: Implement actual Word document text extraction using mammoth or similar
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(
-        `[Extracted text from ${file.name}]\n\nThis is placeholder text that would normally be extracted from the Word document. In a real implementation, this would use libraries like mammoth to extract actual text content from DOCX files.`,
-      )
-    }, 1000)
-  })
 }

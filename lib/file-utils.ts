@@ -1,75 +1,135 @@
 // File processing utilities for document upload system
 
-export const SUPPORTED_FILE_TYPES = {
-  "application/pdf": ".pdf",
-  "application/msword": ".doc",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-  "text/plain": ".txt",
-} as const
+export interface FileInfo {
+  name: string
+  size: number
+  type: string
+  lastModified: number
+}
 
-export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+export interface ExtractedText {
+  text: string
+  metadata: {
+    pages?: number
+    wordCount?: number
+    language?: string
+    confidence?: number
+  }
+}
 
-export function validateFile(file: File): { isValid: boolean; error?: string } {
-  // Check file type
-  if (!Object.keys(SUPPORTED_FILE_TYPES).includes(file.type)) {
-    return {
-      isValid: false,
-      error: `Unsupported file type. Please upload PDF, DOC, DOCX, or TXT files.`,
+export class FileProcessor {
+  // Extract text from various file types
+  static async extractText(file: File): Promise<ExtractedText> {
+    const fileType = file.type.toLowerCase()
+    
+    try {
+      if (fileType.includes('pdf')) {
+        return await this.extractFromPDF(file)
+      } else if (fileType.includes('word') || fileType.includes('docx')) {
+        return await this.extractFromWord(file)
+      } else if (fileType.includes('text') || fileType.includes('plain')) {
+        return await this.extractFromText(file)
+      } else {
+        throw new Error(`Unsupported file type: ${fileType}`)
+      }
+    } catch (error) {
+      console.error('Error extracting text:', error)
+      throw new Error(`Failed to extract text from ${file.name}`)
     }
   }
 
-  // Check file size
-  if (file.size > MAX_FILE_SIZE) {
+  // Extract text from PDF files
+  private static async extractFromPDF(file: File): Promise<ExtractedText> {
+    // For now, we'll use a simple approach
+    // In production, you'd want to use pdf-parse or similar
+    const arrayBuffer = await file.arrayBuffer()
+    const text = `[PDF Content from ${file.name}]\n\nThis is a placeholder for PDF text extraction. In production, implement proper PDF parsing using libraries like pdf-parse.`
+    
     return {
-      isValid: false,
-      error: `File size too large. Maximum size is ${formatFileSize(MAX_FILE_SIZE)}.`,
+      text,
+      metadata: {
+        pages: 1,
+        wordCount: text.split(/\s+/).length,
+        language: 'en',
+        confidence: 0.8
+      }
     }
   }
 
-  // Check for empty files
-  if (file.size === 0) {
+  // Extract text from Word documents
+  private static async extractFromWord(file: File): Promise<ExtractedText> {
+    // For now, we'll use a simple approach
+    // In production, you'd want to use mammoth or similar
+    const text = `[Word Document Content from ${file.name}]\n\nThis is a placeholder for Word document text extraction. In production, implement proper DOCX parsing using libraries like mammoth.`
+    
     return {
-      isValid: false,
-      error: "File is empty.",
+      text,
+      metadata: {
+        wordCount: text.split(/\s+/).length,
+        language: 'en',
+        confidence: 0.8
+      }
     }
   }
 
-  return { isValid: true }
-}
+  // Extract text from plain text files
+  private static async extractFromText(file: File): Promise<ExtractedText> {
+    const text = await file.text()
+    
+    return {
+      text,
+      metadata: {
+        wordCount: text.split(/\s+/).length,
+        language: 'en',
+        confidence: 1.0
+      }
+    }
+  }
 
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes"
-  const k = 1024
-  const sizes = ["Bytes", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-}
+  // Validate file type and size
+  static validateFile(file: File): { isValid: boolean; error?: string } {
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'text/plain',
+      'text/csv'
+    ]
 
-export function getFileIcon(mimeType: string): string {
-  switch (mimeType) {
-    case "application/pdf":
-      return "📄"
-    case "application/msword":
-    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-      return "📝"
-    case "text/plain":
-      return "📃"
-    default:
-      return "📄"
+    if (file.size > maxSize) {
+      return { isValid: false, error: 'File size exceeds 10MB limit' }
+    }
+
+    if (!allowedTypes.includes(file.type)) {
+      return { isValid: false, error: 'File type not supported. Please upload PDF, Word, or text files.' }
+    }
+
+    return { isValid: true }
+  }
+
+  // Get file information
+  static getFileInfo(file: File): FileInfo {
+    return {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    }
+  }
+
+  // Format file size for display
+  static formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes'
+    
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 }
 
-export async function extractTextFromFile(file: File): Promise<string> {
-  // TODO: Implement actual text extraction when AI processing is added
-  // For now, return placeholder text based on file type
-
-  if (file.type === "text/plain") {
-    return await file.text()
-  }
-
-  // For PDF and DOC files, we'll need to implement proper text extraction
-  // This would typically use libraries like pdf-parse or mammoth
-  console.log("[v0] Text extraction placeholder for:", file.name)
-
-  return `[Text extraction placeholder for ${file.name}]`
-}
+// Convenience named exports for legacy imports
+export const validateFile = (file: File) => FileProcessor.validateFile(file)
+export const formatFileSize = (bytes: number) => FileProcessor.formatFileSize(bytes)

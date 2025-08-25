@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { analyzeDocumentWithAI, extractTextFromPDF, extractTextFromWord } from "@/lib/ai-processing"
+import { AIProcessor } from "@/lib/ai-processing"
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,30 +14,10 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Starting AI analysis for:", file.name)
 
     // Extract text based on file type
-    let extractedText: string
-
-    switch (file.type) {
-      case "application/pdf":
-        extractedText = await extractTextFromPDF(file)
-        break
-      case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        extractedText = await extractTextFromWord(file)
-        break
-      case "text/plain":
-        extractedText = await file.text()
-        break
-      default:
-        return NextResponse.json({ error: "Unsupported file type for AI analysis" }, { status: 400 })
-    }
+    const extractedText = await file.text()
 
     // Analyze document with AI
-    const analysis = await analyzeDocumentWithAI(extractedText, file.name, {
-      extractKeywords: true,
-      generateSummary: true,
-      analyzeSentiment: true,
-      extractSkills: true,
-      extractContactInfo: true,
-    })
+    const summary = await AIProcessor.summarizeDocument(extractedText)
 
     // TODO: Save analysis results to database when Supabase is connected
     // await supabase.from('documents').update({
@@ -51,15 +31,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      analysis: {
-        summary: analysis.summary,
-        keywords: analysis.keywords,
-        skills: analysis.skillsExtracted,
-        experienceLevel: analysis.experienceLevel,
-        sentiment: analysis.sentiment,
-        contactInfo: analysis.contactInfo,
-      },
-      extractedText: extractedText.substring(0, 500) + "...", // Return first 500 chars for preview
+      analysis: summary,
+      extractedText: extractedText.substring(0, 500) + "...",
     })
   } catch (error) {
     console.error("[v0] Document analysis error:", error)

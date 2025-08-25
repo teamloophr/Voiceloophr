@@ -9,6 +9,13 @@ export const metadata: Metadata = {
   title: "VoiceLoop - HR Assistant",
   description: "Intelligent HR assistant with voice interaction and document management",
   generator: "v0.app",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png", type: "image/png" }
+    ],
+    apple: [{ url: "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png" }]
+  }
 }
 
 export default function RootLayout({
