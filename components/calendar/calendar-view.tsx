@@ -193,7 +193,7 @@ export function CalendarView({ isDarkMode = false }: { isDarkMode?: boolean }) {
           color: isDarkMode ? '#9ca3af' : '#6b7280'
         }}>
           <p style={{ fontSize: '16px' }}>No events scheduled for today</p>
-          <p style={{ fontSize: '14px', marginTop: '8px' }}>Click "New Event" to get started</p>
+          <p style={{ fontSize: '14px', marginTop: '8px' }}>Click &quot;New Event&quot; to get started</p>
         </div>
       ) : (
         events.map((event) => (

@@ -15,10 +15,12 @@ export interface TranscriptionResult {
 
 export class AIProcessor {
   private static getOpenAIClient(apiKey?: string) {
-    const envKey = (typeof process !== 'undefined' ? (process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY) : undefined) as string | undefined
+    const envKey = (typeof process !== 'undefined'
+      ? (process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY || process.env.DEV_OPENAI_API_KEY)
+      : undefined) as string | undefined
     const key = apiKey || envKey
     if (!key) {
-      throw new Error('OpenAI API key missing. Provide a key in settings or set NEXT_PUBLIC_OPENAI_API_KEY.')
+      throw new Error('OpenAI API key missing. Provide a key in settings or set OPENAI_API_KEY (or DEV_OPENAI_API_KEY for local testing).')
     }
     return new OpenAI({ 
       apiKey: key,
@@ -49,7 +51,7 @@ export class AIProcessor {
             systemInstructions = storedGeneral + '\n\nAnalyze the following document content and return ONLY a strict JSON object with keys: summary (string, 2-3 sentences), keyPoints (string[] of 3-6 concise points), sentiment (one of \'positive\'|\'negative\'|\'neutral\'), confidence (0-100 number). No markdown, no prose, only JSON.'
           }
         }
-      } catch (e) {
+      } catch {
         console.log('Could not load custom AI instructions for document analysis, using defaults')
       }
       
@@ -83,7 +85,7 @@ export class AIProcessor {
           sentiment: parsed.sentiment || 'neutral',
           confidence: parsed.confidence || 0
         }
-      } catch (parseError) {
+      } catch {
         // Try to extract JSON from text (e.g., wrapped in fences)
         try {
           const match = result.match(/\{[\s\S]*\}/)
@@ -114,11 +116,7 @@ export class AIProcessor {
   static async transcribeAudio(audioBlob: Blob, apiKey?: string): Promise<TranscriptionResult> {
     try {
       const openai = this.getOpenAIClient(apiKey)
-      
-      // Convert blob to base64
-      const arrayBuffer = await audioBlob.arrayBuffer()
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
-      
+      await audioBlob.arrayBuffer() // allocate once; do not store base64 to avoid unused var
       const response = await openai.audio.transcriptions.create({
         file: new File([audioBlob], 'audio.webm', { type: 'audio/webm' }),
         model: "whisper-1",
@@ -153,6 +151,18 @@ export class AIProcessor {
     }
   }
 
+  static async embedChunks(chunks: Array<{ index: number; content: string }>, apiKey?: string): Promise<number[][]> {
+    if (!chunks.length) return []
+    const texts = chunks.map(c => c.content)
+    const openai = this.getOpenAIClient(apiKey)
+    const response = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: texts,
+      dimensions: 1536
+    })
+    return response.data.map(d => d.embedding)
+  }
+
   static async processHRQuery(query: string, apiKey?: string, context?: string): Promise<string> {
     try {
       const openai = this.getOpenAIClient(apiKey)
@@ -173,7 +183,7 @@ export class AIProcessor {
             userInstructions = storedUser
           }
         }
-      } catch (e) {
+      } catch {
         console.log('Could not load custom AI instructions, using defaults')
       }
       

@@ -20,7 +20,7 @@ export interface HRDocument {
   user_id: string
   summary?: string
   embeddings?: number[]
-  metadata?: Record<string, any>
+  metadata?: { [key: string]: unknown }
 }
 
 export interface SearchResult {
