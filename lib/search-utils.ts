@@ -2,7 +2,8 @@ import type { SearchResult } from './supabase'
 import { AIProcessor } from './ai-processing'
 
 // Lazy Supabase initialization to avoid build-time errors
-let supabaseClient: any = null
+import type { SupabaseClient } from '@supabase/supabase-js'
+let supabaseClient: SupabaseClient | null = null
 
 function getSupabaseClient() {
   if (!supabaseClient) {
@@ -27,7 +28,7 @@ function getSupabaseClient() {
 }
 
 // Fallback search function when Supabase is not available
-function fallbackSearch(query: string): SearchResult[] {
+function fallbackSearch(_query: string): SearchResult[] {
   return [{
     id: 'fallback',
     title: 'Search Unavailable',
@@ -168,7 +169,7 @@ async function searchDocuments(query: SearchQuery): Promise<SearchResult[]> {
     }
     
     // Transform to SearchResult format
-    return (searchResults || []).map((doc: any) => ({
+    return (searchResults || []).map((doc: Record<string, any>) => ({
       id: doc.id,
       title: doc.title,
       content: doc.content,

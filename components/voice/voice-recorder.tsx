@@ -196,7 +196,7 @@ export function VoiceRecorder({ onTranscriptComplete, onError }: VoiceRecorderPr
 
         {/* Instructions */}
         <div className="text-xs text-gray-500 text-center">
-          <p>Click "Start Recording" and speak clearly. Your speech will be converted to text in real-time.</p>
+          <p>Click &quot;Start Recording&quot; and speak clearly. Your speech will be converted to text in real-time.</p>
         </div>
       </CardContent>
     </Card>
