@@ -2,14 +2,13 @@ import type { SearchResult } from './supabase'
 import { AIProcessor } from './ai-processing'
 
 // Lazy Supabase initialization to avoid build-time errors
-import type { SupabaseClient } from '@supabase/supabase-js'
-let supabaseClient: SupabaseClient | null = null
+let supabaseClient: any | null = null
 
-function getSupabaseClient() {
+async function getSupabaseClient(): Promise<any> {
   if (!supabaseClient) {
     try {
-      // Only import and create client when actually needed
-      const { createClient } = require('@supabase/supabase-js')
+      // Dynamic import to satisfy SSR/lint rules
+      const mod = await import('@supabase/supabase-js')
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
       const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
       
@@ -18,7 +17,7 @@ function getSupabaseClient() {
         return null
       }
       
-      supabaseClient = createClient(supabaseUrl, supabaseAnonKey)
+      supabaseClient = mod.createClient(supabaseUrl, supabaseAnonKey)
     } catch (error) {
       console.warn('Failed to initialize Supabase client:', error)
       return null
@@ -149,7 +148,7 @@ async function searchDocuments(query: SearchQuery): Promise<SearchResult[]> {
     const queryEmbedding = await AIProcessor.generateEmbeddings(query.query)
     
     // Get Supabase client (lazy initialization)
-    const supabase = getSupabaseClient()
+    const supabase = await getSupabaseClient()
     
     if (!supabase) {
       console.warn('Supabase not available, using fallback search')
