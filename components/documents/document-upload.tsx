@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress"
 import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { validateFile, formatFileSize } from "@/lib/file-utils"
+import { useAuth } from "@/contexts/auth-context"
 
 interface UploadFile {
   id: string
@@ -21,6 +22,7 @@ interface UploadFile {
 export function DocumentUpload() {
   const [files, setFiles] = useState<UploadFile[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
+  const { user } = useAuth()
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -72,6 +74,10 @@ export function DocumentUpload() {
   const uploadToServer = async (fileId: string) => {
     const uploadFile = files.find((f) => f.id === fileId)
     if (!uploadFile) return
+    if (!user?.id) {
+      setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, status: "error", error: "Please sign in to upload" } : f)))
+      return
+    }
 
     setFiles((prev) => prev.map((f) => (f.id === fileId ? { ...f, status: "uploading" } : f)))
 
@@ -79,6 +85,7 @@ export function DocumentUpload() {
       // Create FormData
       const formData = new FormData()
       formData.append("files", uploadFile.file)
+      formData.append("userId", user.id)
 
       // Simulate progress
       const progressInterval = setInterval(() => {

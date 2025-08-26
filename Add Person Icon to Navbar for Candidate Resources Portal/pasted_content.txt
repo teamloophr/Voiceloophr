@@ -1,0 +1,33 @@
+For your HR startup, voiceloophr.com, leveraging open-source platforms can be a strategic way to build a robust candidate and recruiter database. Here are some of the biggest open-source options available, categorized for your convenience:
+
+### Open-Source Applicant Tracking Systems (ATS) with Candidate Databases
+
+These platforms are comprehensive solutions for managing the entire recruitment lifecycle, from posting jobs to hiring candidates. They are designed to be customized and can form the backbone of your candidate database.
+
+| Platform | Key Features | Ideal For |
+| --- | --- | --- |
+| **OpenCATS** | A well-established, free, and open-source ATS. It helps manage the full recruitment cycle, including candidate details, resumes, and job orders. It's designed by the recruiting community. | Recruiters and HR professionals who want a customizable, full-featured system to manage their recruitment process. |
+| **Odoo Recruitment** | Part of the larger Odoo open-source ERP system, it integrates recruitment with other business applications. You can create a job board, track applications, and build a database of skills and profiles. | Businesses that want an integrated ERP and recruitment solution. |
+| **CandidATS** | A free and open-source ATS focused on security, with features like field-level security and access control. It includes modules for managing candidates, job orders, and more. | Recruitment agencies and businesses that prioritize a secure ATS. |
+| **EazyRecruit** | An AI-enabled open-source recruitment software designed to streamline screening and hiring. It features resume parsing, applicant tracking, and interview scheduling. | Companies of all sizes, from SMEs to large corporations, looking for an AI-powered hiring tool. |
+
+### Free and Freemium Recruiting Software
+
+While not entirely open-source, these platforms offer free tiers that provide significant value, especially for startups. They can be a great starting point for building your database.
+
+| Platform | Key Features | Noteworthy |
+| --- | --- | --- |
+| **Zoho Recruit** | Offers a free plan with basic candidate management, email management, and interview scheduling. It can be used to publish jobs, parse resumes, and create a careers page for your company. | A comprehensive talent acquisition platform with both ATS and CRM functionalities. |
+| **SmartRecruiters** | The free "SmartStart" plan is available for companies with up to 250 employees and allows for up to 10 active job postings. It includes features like a branded career website and one-click job posting to over 200 job boards. | A popular choice for startups, used by major companies like Visa and LinkedIn. |
+| **Dover** | A free ATS that is designed for startups and in-house recruiting teams. It offers an all-in-one platform with sourcing, scheduling, and AI-powered applicant sorting. | Simplifies the entire hiring process from application to offer by automating and centralizing key tasks. |
+
+### Candidate Sourcing Platforms
+
+These platforms are not open-source databases themselves, but they provide access to vast pools of candidate data from various online sources. They are essential tools for populating your own database.
+
+*   **Loxo:** Offers a "Talent Intelligence Platform" with a large database of publicly available candidate information from across the open web.
+*   **HireEZ (formerly Hiretual):** An AI-powered platform that sources candidates from over 45 online platforms, including LinkedIn and GitHub.
+*   **GitHub:** An essential platform for sourcing tech talent, allowing you to assess candidates based on their coding skills and open-source contributions.
+*   **Indeed Resume:** Provides access to a massive database of over 200 million resumes.
+
+For your startup, a combination of an open-source ATS like **OpenCATS** to manage your core database and processes, supplemented with free sourcing tools and platforms like **Indeed** and **GitHub**, could be a powerful and cost-effective strategy.

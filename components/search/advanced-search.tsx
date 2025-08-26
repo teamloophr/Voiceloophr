@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Filter, Save, X } from "lucide-react"
-import { searchEngineAPI, type SearchFilters, type SavedSearch } from "@/lib/search-utils"
+import { type SearchFilters, type SavedSearch } from "@/lib/search-utils"
+import { useAuth } from "@/contexts/auth-context"
 import type { SearchResult } from "@/lib/supabase"
 
 interface AdvancedSearchProps {
@@ -26,6 +27,7 @@ export function AdvancedSearch({ onSearchResults, onFiltersChange }: AdvancedSea
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([])
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [saveSearchName, setSaveSearchName] = useState("")
+  const { user } = useAuth()
 
   const skills = ["JavaScript", "React", "Node.js", "Python", "Java", "SQL", "AWS", "Docker"]
   const experienceLevels = ["junior", "mid", "senior", "executive"]
@@ -37,9 +39,15 @@ export function AdvancedSearch({ onSearchResults, onFiltersChange }: AdvancedSea
     setShowSuggestions(false)
 
     try {
-      const results = await searchEngineAPI.search({ query, filters })
-      onSearchResults?.(results.results)
-      console.log("[v0] Search completed:", results.totalCount, "results")
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, filters, userId: user?.id })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data?.error || 'Search failed')
+      onSearchResults?.(data.results)
+      console.log("[search] completed:", data.totalCount, "results")
     } catch (error) {
       console.error("[v0] Search error:", error)
     } finally {
@@ -52,8 +60,8 @@ export function AdvancedSearch({ onSearchResults, onFiltersChange }: AdvancedSea
 
     if (value.length > 2) {
       try {
-        const suggestions = await searchEngineAPI.getSearchSuggestions(value)
-        setSuggestions(suggestions)
+        // Simple local suggestions
+        setSuggestions([`${value} skills`, `${value} experience`, `${value} requirements`])
         setShowSuggestions(true)
       } catch (error) {
         console.error("[v0] Suggestions error:", error)
@@ -112,10 +120,15 @@ export function AdvancedSearch({ onSearchResults, onFiltersChange }: AdvancedSea
     if (!saveSearchName.trim() || !query.trim()) return
 
     try {
-      // Perform search to get result count
-      const results = await searchEngineAPI.search({ query, filters })
-      const savedSearch = searchEngineAPI.saveSearch(saveSearchName, query, filters, results.totalCount)
-
+      // Optimistically save in UI (persisting not implemented yet)
+      const savedSearch = {
+        id: Date.now().toString(),
+        name: saveSearchName,
+        query,
+        filters,
+        resultCount: 0,
+        createdAt: new Date().toISOString()
+      } as SavedSearch
       setSavedSearches((prev) => [savedSearch, ...prev])
       setShowSaveDialog(false)
       setSaveSearchName("")
@@ -131,7 +144,6 @@ export function AdvancedSearch({ onSearchResults, onFiltersChange }: AdvancedSea
   }
 
   const deleteSavedSearch = (searchId: string) => {
-    searchEngineAPI.deleteSavedSearch(searchId)
     setSavedSearches((prev) => prev.filter((search) => search.id !== searchId))
   }
 

@@ -250,7 +250,7 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onSettingsSaved }: 
                       <p className="text-sm mt-1" style={{ color: ui.subText }}>
                         <strong>Step 1:</strong> Add your OpenAI API key below to enable AI chat and document analysis<br/>
                         <strong>Step 2:</strong> (Optional) Add Supabase credentials for document storage and search<br/>
-                        <strong>Step 3:</strong> Start chatting with your AI HR assistant!
+                        <strong>Step 3:</strong> Start chatting with your AI Human Resources assistant!
                       </p>
                     </div>
                   </div>
@@ -385,7 +385,162 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onSettingsSaved }: 
                 </div>
               </div>
 
-              {/* Supabase Configuration — removed in UI. Credentials are read from environment variables. */}
+              {/* AI Instructions Configuration */}
+              <div className="p-4 rounded-lg" style={{ background: ui.glassBg, border: `1px solid ${ui.glassBorder}`, padding: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div className="flex items-center" style={{ gap: 10 }}>
+                    <Bot className="h-5 w-5" style={{ color: ui.accent }} />
+                    <h3 className="text-lg font-medium" style={{ margin: 0 }}>AI Assistant Instructions</h3>
+                  </div>
+                  <span className="text-xs" style={{ color: ui.subText, whiteSpace: 'nowrap' }}>Personality Control</span>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* General AI Instructions */}
+                  <div>
+                    <Label className="text-sm font-medium" style={{ display: 'block', marginBottom: 8 }}>
+                      General AI Instructions (System Prompt)
+                    </Label>
+                    <textarea
+                      value={(() => {
+                        try {
+                          return localStorage.getItem('voiceloophr-ai-instructions-general') || 
+                            'You are an intelligent Human Resources assistant. Help users with document analysis, resume review, interview preparation, and Human Resources related questions. Be professional, helpful, and concise.'
+                        } catch {
+                                                      return 'You are an intelligent Human Resources assistant. Help users with document analysis, resume review, interview preparation, and Human Resources related questions. Be professional, helpful, and concise.'
+                        }
+                      })()}
+                      onChange={(e) => {
+                        try {
+                          localStorage.setItem('voiceloophr-ai-instructions-general', e.target.value)
+                        } catch {}
+                      }}
+                      placeholder="Enter general instructions for the AI assistant..."
+                      rows={4}
+                      style={{
+                        width: '100%',
+                        background: ui.inputBg,
+                        border: `1px solid ${ui.line}`,
+                        color: ui.text,
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        fontSize: '14px',
+                        fontFamily: 'inherit',
+                        resize: 'vertical'
+                      }}
+                    />
+                    <p className="text-xs mt-2" style={{ color: ui.subText }}>
+                      These instructions define the AI's base personality and behavior. They apply to all interactions.
+                    </p>
+                  </div>
+
+                  {/* User Custom Instructions */}
+                  <div>
+                    <Label className="text-sm font-medium" style={{ display: 'block', marginBottom: 8 }}>
+                      Custom User Instructions
+                    </Label>
+                    <textarea
+                      value={(() => {
+                        try {
+                          return localStorage.getItem('voiceloophr-ai-instructions-user') || ''
+                        } catch {
+                          return ''
+                        }
+                      })()}
+                      onChange={(e) => {
+                        try {
+                          localStorage.setItem('voiceloophr-ai-instructions-user', e.target.value)
+                        } catch {}
+                      }}
+                      placeholder="Add your personal preferences for how the AI should respond to you..."
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        background: ui.inputBg,
+                        border: `1px solid ${ui.line}`,
+                        color: ui.text,
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        fontSize: '14px',
+                        fontFamily: 'inherit',
+                        resize: 'vertical'
+                      }}
+                    />
+                    <p className="text-xs mt-2" style={{ color: ui.subText }}>
+                      Personalize how the AI responds to you. Examples: "Use a friendly tone", "Focus on technical details", "Be concise".
+                    </p>
+                  </div>
+
+                  {/* Quick Presets */}
+                  <div>
+                    <Label className="text-sm font-medium" style={{ display: 'block', marginBottom: 8 }}>
+                      Quick Personality Presets
+                    </Label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {[
+                        { name: 'Professional HR', prompt: 'You are a professional HR consultant. Be formal, thorough, and provide actionable advice.' },
+                        { name: 'Friendly Coach', prompt: 'You are a friendly career coach. Be encouraging, supportive, and use a warm, motivating tone.' },
+                        { name: 'Technical Expert', prompt: 'You are a technical HR expert. Focus on data, best practices, and industry standards.' },
+                        { name: 'Creative Advisor', prompt: 'You are a creative HR advisor. Think outside the box, suggest innovative solutions, and be inspiring.' }
+                      ].map((preset, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            try {
+                              localStorage.setItem('voiceloophr-ai-instructions-general', preset.prompt)
+                              window.location.reload() // Simple way to update the UI
+                            } catch {}
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            background: ui.glassBg,
+                            border: `1px solid ${ui.line}`,
+                            color: ui.text,
+                            borderRadius: 20,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = ui.accent
+                            e.currentTarget.style.color = '#000'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = ui.glassBg
+                            e.currentTarget.style.color = ui.text
+                          }}
+                        >
+                          {preset.name}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs mt-2" style={{ color: ui.subText }}>
+                      Click any preset to quickly change the AI's personality. You can still customize further above.
+                    </p>
+                  </div>
+
+                  {/* Sandbox Mode Notice */}
+                  <div style={{ 
+                    padding: '12px 16px', 
+                    background: 'rgba(34, 197, 94, 0.1)', 
+                    border: '1px solid rgba(34, 197, 94, 0.3)', 
+                    borderRadius: 8,
+                    borderLeft: '4px solid #22c55e'
+                  }}>
+                    <div className="flex items-start space-x-2">
+                      <span className="text-green-500 text-sm">🔧</span>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: '#22c55e', margin: 0 }}>
+                          Sandbox Mode Active
+                        </p>
+                        <p className="text-xs mt-1" style={{ color: 'rgba(34, 197, 94, 0.8)' }}>
+                          AI instructions are currently stored locally in your browser. In production, these will be stored securely in your account.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Visual Settings */}
               <div className="p-4 rounded-lg" style={{ background: ui.glassBg, border: `1px solid ${ui.glassBorder}`, padding: 20 }}>
