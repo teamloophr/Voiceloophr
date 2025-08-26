@@ -191,6 +191,16 @@ pnpm type-check   # Run TypeScript compiler
 
 ## 🚀 Deployment
 
+### Current Status and Known Challenges
+
+We recently introduced hybrid semantic search with chunking, audit logs, and stricter auth.
+
+- Search requires valid OpenAI key server-side and a real Supabase user UUID (guest mode is not supported for vector RPCs). If embeddings fail, the API falls back to text search.
+- New SQL scripts to run in this order: `02-hr-documents-table.sql`, `05-search-admin.sql`, `06-search-hybrid-and-candidates.sql`, `07-embeddings-maintenance.sql`, `08-security-audit-and-chunks.sql`.
+- Ensure Supabase Auth Email is enabled and Redirect URLs include your app URL.
+
+See `docs/KNOWN_ISSUES.md` for step-by-step fixes.
+
 ### Vercel (Recommended)
 1. Connect your GitHub repository to Vercel
 2. Set environment variables in Vercel dashboard
