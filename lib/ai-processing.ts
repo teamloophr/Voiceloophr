@@ -39,12 +39,26 @@ export class AIProcessor {
         }
       }
       
+      // Get custom AI instructions for document analysis
+      let systemInstructions = 'You are an HR expert. Analyze the user content and return ONLY a strict JSON object with keys: summary (string, 2-3 sentences), keyPoints (string[] of 3-6 concise points), sentiment (one of \'positive\'|\'negative\'|\'neutral\'), confidence (0-100 number). No markdown, no prose, only JSON.'
+      
+      try {
+        if (typeof window !== 'undefined') {
+          const storedGeneral = localStorage.getItem('voiceloophr-ai-instructions-general')
+          if (storedGeneral) {
+            systemInstructions = storedGeneral + '\n\nAnalyze the following document content and return ONLY a strict JSON object with keys: summary (string, 2-3 sentences), keyPoints (string[] of 3-6 concise points), sentiment (one of \'positive\'|\'negative\'|\'neutral\'), confidence (0-100 number). No markdown, no prose, only JSON.'
+          }
+        }
+      } catch (e) {
+        console.log('Could not load custom AI instructions for document analysis, using defaults')
+      }
+      
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "You are an HR expert. Analyze the user content and return ONLY a strict JSON object with keys: summary (string, 2-3 sentences), keyPoints (string[] of 3-6 concise points), sentiment (one of 'positive'|'negative'|'neutral'), confidence (0-100 number). No markdown, no prose, only JSON."
+            content: systemInstructions
           },
           {
             role: "user",
@@ -143,10 +157,37 @@ export class AIProcessor {
     try {
       const openai = this.getOpenAIClient(apiKey)
       
-      const systemPrompt = `You are an AI-powered HR assistant. Provide helpful, professional, and accurate responses to HR-related questions. 
+      // Get custom AI instructions from localStorage
+      let generalInstructions = 'You are an AI-powered Human Resources assistant. Provide helpful, professional, and accurate responses to Human Resources related questions.'
+      let userInstructions = ''
       
-If context is provided, use it to give more relevant answers. Always be helpful, clear, and professional.`
+      try {
+        if (typeof window !== 'undefined') {
+          const storedGeneral = localStorage.getItem('voiceloophr-ai-instructions-general')
+          const storedUser = localStorage.getItem('voiceloophr-ai-instructions-user')
+          
+          if (storedGeneral) {
+            generalInstructions = storedGeneral
+          }
+          if (storedUser) {
+            userInstructions = storedUser
+          }
+        }
+      } catch (e) {
+        console.log('Could not load custom AI instructions, using defaults')
+      }
+      
+      // Combine instructions
+      let systemPrompt = generalInstructions
+      if (userInstructions.trim()) {
+        systemPrompt += `\n\nAdditional user preferences: ${userInstructions}`
+      }
+      
+      // Add context handling instruction and text-to-speech requirements
+      systemPrompt += `\n\nIf context is provided, use it to give more relevant answers. Always be helpful, clear, and professional.
 
+IMPORTANT FOR TEXT-TO-SPEECH: Your response must be completely clean text with NO special characters, NO markdown, NO emojis, NO asterisks (*), NO backticks, NO brackets [], NO parentheses (), and NO symbols. Use only letters, numbers, spaces, and basic punctuation (periods, commas, semicolons, colons, exclamation marks, question marks, hyphens). Avoid any characters that would sound awkward when read aloud by text-to-speech software.`
+      
       const messages: Array<{ role: "system" | "user"; content: string }> = [
         { role: "system", content: systemPrompt },
         { role: "user", content: context ? `Context: ${context}\n\nQuestion: ${query}` : query }
@@ -159,7 +200,21 @@ If context is provided, use it to give more relevant answers. Always be helpful,
         max_tokens: 500
       })
 
-      return response.choices[0]?.message?.content || 'I apologize, but I was unable to process your request.'
+      const aiResponse = response.choices[0]?.message?.content || 'I apologize, but I was unable to process your request.'
+      
+      // Clean the response for text-to-speech
+      const cleanResponse = aiResponse
+        .replace(/```[\s\S]*?```/g, '') // Remove any code blocks
+        .replace(/\[.*?\]/g, '') // Remove square brackets
+        .replace(/\(.*?\)/g, '') // Remove parentheses
+        .replace(/\*/g, '') // Remove asterisks
+        .replace(/`/g, '') // Remove backticks
+        .replace(/[#@%&+=]/g, '') // Remove hashtags, at symbols, percent, ampersand, plus, equals
+        .replace(/[^\w\s\.\,\;\:\!\?\-]/g, '') // Keep only letters, numbers, spaces, and basic punctuation
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim()
+      
+      return cleanResponse || 'I apologize, but I was unable to process your request.'
     } catch (error) {
       console.error('Error processing HR query:', error)
       throw new Error(`Failed to process query: ${error instanceof Error ? error.message : 'Unknown error'}`)

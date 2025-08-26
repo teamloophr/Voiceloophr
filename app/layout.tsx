@@ -6,8 +6,8 @@ import { AuthProvider } from "@/contexts/auth-context"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "VoiceLoop - HR Assistant",
-  description: "Intelligent HR assistant with voice interaction and document management",
+  title: "VoiceLoop - Human Resources Assistant",
+  description: "Intelligent Human Resources assistant with voice interaction and document management",
   generator: "v0.app",
   icons: {
     icon: [

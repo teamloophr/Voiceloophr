@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { Send, Sun, Moon, Paperclip, Mic, Volume2, Settings, LogOut, Calendar as CalendarIcon, LogIn } from "lucide-react"
+import { Send, Sun, Moon, Paperclip, Mic, Volume2, Settings, LogOut, Calendar as CalendarIcon, LogIn, Users } from "lucide-react"
 import CalendarModal from "@/components/calendar/calendar-modal"
 import AuthModal from "@/components/auth/auth-modal"
+import CandidateResourcesModal from "@/components/candidate-resources/candidate-resources-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AIProcessor } from "@/lib/ai-processing"
@@ -42,7 +43,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      content: "Hello! I'm your AI HR assistant. I can help you with:\n\n📄 Document analysis and summarization\n🎤 Voice transcription and queries\n🔍 Resume search and candidate matching\n📅 Calendar integration\n\nHow can I assist you today?",
+        content: "Hello. I am your AI Human Resources assistant. I can help you with\n\n- Document analysis and summarization\n- Voice transcription and queries\n- Resume search and candidate matching\n- Calendar integration\n\nHow can I assist you today?",
       role: "assistant",
       timestamp: new Date(),
       type: "text"
@@ -64,6 +65,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
   const [voiceSynthesizer, setVoiceSynthesizer] = useState<VoiceSynthesizer | null>(null)
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [isAuthOpen, setIsAuthOpen] = useState(false)
+  const [isCandidateResourcesOpen, setIsCandidateResourcesOpen] = useState(false)
   const [volume, setVolume] = useState(1.0)
   // Drag state for message bubbles
   const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({})
@@ -142,6 +144,12 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
     try { window.location.hash = '#auth' } catch {}
     console.log('🔐 Auth modal state after set:', { isAuthOpen: true, user })
   }
+  
+  const handleOpenCandidateResources = () => {
+    try { console.debug('[UI] Open Candidate Resources clicked') } catch {}
+    setIsCandidateResourcesOpen(true)
+    try { window.location.hash = '#candidate-resources' } catch {}
+  }
 
   // Open via hash for reliability (and to debug routing)
   useEffect(() => {
@@ -149,7 +157,8 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
       const h = typeof window !== 'undefined' ? window.location.hash : ''
       if (h === '#calendar') setIsCalendarOpen(true)
       if (h === '#auth') setIsAuthOpen(true)
-      if (h === '#close') { setIsCalendarOpen(false); setIsAuthOpen(false) }
+      if (h === '#candidate-resources') setIsCandidateResourcesOpen(true)
+      if (h === '#close') { setIsCalendarOpen(false); setIsAuthOpen(false); setIsCandidateResourcesOpen(false) }
     }
     applyHash()
     window.addEventListener('hashchange', applyHash)
@@ -349,16 +358,31 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
 
   // Handle file upload and processing
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    // Validate event and file input
+    if (!event || !event.target || !event.target.files) {
+      console.error('[handleFileUpload] Invalid event object:', event)
+      return
+    }
 
-    const key = getEffectiveApiKey()
-    if (!key) {
+    const file = event.target.files[0]
+    if (!file) {
+      console.log('[handleFileUpload] No file selected')
+      return
+    }
+
+    console.log('[handleFileUpload] File selected:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified
+    })
+
+    // Additional file validation
+    if (!file.name || file.size === 0) {
+      console.error('[handleFileUpload] Invalid file object:', file)
       const errorMessage: Message = {
         id: Date.now().toString(),
-        content: isGuest 
-          ? 'Please configure your OpenAI API key in settings to analyze documents. As a guest, your settings are saved locally.'
-          : 'Please configure your OpenAI API key in settings first.',
+        content: 'Invalid file: File appears to be empty or corrupted',
         role: "assistant",
         timestamp: new Date(),
         type: "text"
@@ -367,19 +391,120 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
       return
     }
 
+    // Comprehensive file type validation for resumes and modern formats
+    const allowedExtensions = [
+      // Document formats
+      '.pdf', '.doc', '.docx', '.txt', '.md', '.rtf', '.odt', '.pages',
+      // Spreadsheet formats
+      '.csv', '.xls', '.xlsx', '.ods',
+      // Presentation formats
+      '.ppt', '.pptx', '.odp',
+      // Audio formats (for video resumes, interviews, etc.)
+      '.wav', '.mp3', '.m4a', '.aac', '.ogg', '.flac',
+      // Video formats (for video resumes, presentations, etc.)
+      '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.3gp',
+      // Image formats (for visual resumes, portfolios, etc.)
+      '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.svg', '.webp',
+      // Archive formats (for portfolio packages)
+      '.zip', '.rar', '.7z', '.tar', '.gz'
+    ]
+    
+    const allowedMimeTypes = [
+      // Documents
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'text/markdown',
+      'text/rtf',
+      'application/vnd.oasis.opendocument.text',
+      'application/vnd.apple.pages',
+      // Spreadsheets
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.oasis.opendocument.spreadsheet',
+      // Presentations
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.oasis.opendocument.presentation',
+      // Audio
+      'audio/wav', 'audio/mp3', 'audio/mp4', 'audio/m4a', 'audio/aac', 'audio/ogg', 'audio/flac',
+      // Video
+      'video/mp4', 'video/avi', 'video/quicktime', 'video/x-ms-wmv', 'video/x-flv', 'video/webm', 'video/x-matroska', 'video/3gpp',
+      // Images
+      'image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff', 'image/svg+xml', 'image/webp',
+      // Archives
+      'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed', 'application/x-tar', 'application/gzip'
+    ]
+    
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+    const hasValidExtension = allowedExtensions.includes(fileExtension)
+    const hasValidMimeType = allowedMimeTypes.includes(file.type)
+    
+    if (!hasValidExtension && !hasValidMimeType) {
+      console.error('[handleFileUpload] Invalid file type:', { extension: fileExtension, mimeType: file.type })
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        content: `Invalid file type: ${fileExtension}. We support most modern file formats including documents, audio, video, images, and archives.`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "text"
+      }
+      setMessages(prev => [...prev, errorMessage])
+      return
+    }
+
+    console.log('[handleFileUpload] File type validation passed:', { extension: fileExtension, mimeType: file.type })
+
+    // Smart file routing based on type
+    const isAudioFile = fileExtension.match(/\.(wav|mp3|m4a|aac|ogg|flac)$/i) || 
+                       file.type.startsWith('audio/')
+    
+    const isVideoFile = fileExtension.match(/\.(mp4|avi|mov|wmv|flv|webm|mkv|3gp)$/i) || 
+                       file.type.startsWith('video/')
+    
+    const isImageFile = fileExtension.match(/\.(jpg|jpeg|png|gif|bmp|tiff|svg|webp)$/i) || 
+                       file.type.startsWith('image/')
+    
+    const isArchiveFile = fileExtension.match(/\.(zip|rar|7z|tar|gz)$/i) || 
+                         file.type.startsWith('application/')
+
+         // Route audio/video files to transcription API
+     if (isAudioFile || isVideoFile) {
+       console.log('[handleFileUpload] Audio/Video file detected, routing to transcription API')
+       await handleAudioVideoFileUpload(file, !!isVideoFile)
+       return
+     }
+
+    // Route image files to OCR/analysis
+    if (isImageFile) {
+      console.log('[handleFileUpload] Image file detected, routing to image analysis')
+      await handleImageFileUpload(file)
+      return
+    }
+
+    // Route archive files to extraction
+    if (isArchiveFile) {
+      console.log('[handleFileUpload] Archive file detected, routing to archive extraction')
+      await handleArchiveFileUpload(file)
+      return
+    }
+
+    // Route document files to text extraction
+    console.log('[handleFileUpload] Document file detected, routing to text extraction')
+    await handleDocumentFileUpload(file)
+  }
+
+  // Handle audio file upload (for transcription)
+  const handleAudioFileUpload = async (file: File) => {
     try {
       setIsProcessingFile(true)
       
-      // Validate file
-      const validation = FileProcessor.validateFile(file)
-      if (!validation.isValid) {
-        throw new Error(validation.error)
-      }
-
-      // Add file message
+      // Add file message for audio files
       const fileMessage: Message = {
         id: Date.now().toString(),
-        content: `📎 Uploaded: ${file.name}`,
+        content: `🎵 Audio Upload: ${file.name}`,
         role: "user",
         timestamp: new Date(),
         type: "file",
@@ -390,58 +515,58 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
       }
       
       setMessages(prev => [...prev, fileMessage])
-
-      // Extract text via server route (real PDF/DOCX parsing)
+      
       const fd = new FormData()
       fd.append('file', file)
-      // Dual-layer prompts: system and user
-      const systemPrompt = 'You are an HR document analysis assistant. Provide concise, factual summaries and key points, avoid speculation.'
-      const userSettingsRaw = localStorage.getItem('voiceloophr-guest-settings')
-      const userPrompt = userSettingsRaw ? (JSON.parse(userSettingsRaw).analysisPrompt || '') : ''
-      fd.append('systemPrompt', systemPrompt)
-      fd.append('userPrompt', userPrompt)
-      const exRes = await fetch('/api/documents/extract', { method: 'POST', body: fd })
-      const exCt = exRes.headers.get('content-type') || ''
-      let exJson: any = null
-      if (exCt.includes('application/json')) {
-        exJson = await exRes.json()
-        if (!exRes.ok) throw new Error(exJson.error || 'Extraction failed')
+      
+      // Add API key to the request
+      const apiKey = getEffectiveApiKey()
+      if (apiKey) {
+        fd.append('apiKey', apiKey)
+        console.log('[handleAudioFileUpload] Added API key to transcription request')
       } else {
-        const txt = await exRes.text()
-        throw new Error(`Extraction failed: ${txt.substring(0, 180)}`)
+        console.error('[handleAudioFileUpload] No API key available for transcription')
+        throw new Error('OpenAI API key not configured. Please add your API key in settings.')
       }
-      const extractedText = exJson.extracted
       
-      // Analyze with AI
-      // Merge prompts for context
-      const mergedContext = [systemPrompt, userPrompt].filter(Boolean).join('\n\n')
-      const analysis = await AIProcessor.summarizeDocument(`${mergedContext}\n\n${extractedText.text}`, key)
+      const res = await fetch('/api/ai/transcribe', { method: 'POST', body: fd })
+      const tr = await res.json()
+      if (!res.ok) throw new Error(tr.error || 'Transcription failed')
+      const transcription = { text: tr.text, language: tr.language || 'en', confidence: 0.9 }
       
-      // Add analysis message with save/discard options
-      const analysisMessage: Message = {
+      // Add transcription message
+      const transcriptionMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: `📊 **Document Analysis**\n\n**Summary:** ${analysis.summary}\n\n**Key Points:**\n${analysis.keyPoints.map(point => `• ${point}`).join('\n')}\n\n**Sentiment:** ${analysis.sentiment} (Confidence: ${Math.round(analysis.confidence * 100)}%)`,
+        content: `Transcription: ${transcription.text}\n\nLanguage: ${transcription.language}\nConfidence: ${Math.round(transcription.confidence * 100)} percent`,
         role: "assistant",
         timestamp: new Date(),
-        type: "analysis",
-        metadata: { 
-          analysis,
-          file: file,
-          extractedText: extractedText,
-          requiresAction: true // Flag to show save/discard options
-        }
+        type: "voice",
+        metadata: { transcription }
       }
       
-      setMessages(prev => [...prev, analysisMessage])
-
-      // Don't auto-store - let user choose
-      // The save/discard options will be handled by the UI
-
-    } catch (error) {
-      console.error('Error processing file:', error)
+      setMessages(prev => [...prev, transcriptionMessage])
+      
+      // Process with AI for HR insights
+      const key = getEffectiveApiKey()
+      if (key) {
+        const aiResponse = await AIProcessor.processHRQuery(transcription.text, key)
+        
+        const aiMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          content: aiResponse,
+          role: "assistant",
+          timestamp: new Date(),
+          type: "text"
+        }
+        
+        setMessages(prev => [...prev, aiMessage])
+      }
+      
+    } catch (transcriptionError) {
+      console.error('Transcription error:', transcriptionError)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: `❌ Error processing file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `❌ Failed to transcribe audio: ${transcriptionError instanceof Error ? transcriptionError.message : 'Unknown error'}`,
         role: "assistant",
         timestamp: new Date(),
         type: "text"
@@ -449,7 +574,273 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
       setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsProcessingFile(false)
-      if (event.target) event.target.value = ''
+    }
+  }
+
+  // Handle audio/video file upload (for transcription)
+  const handleAudioVideoFileUpload = async (file: File, isVideo: boolean) => {
+    try {
+      setIsProcessingFile(true)
+      
+      // Add file message for audio/video files
+      const fileMessage: Message = {
+        id: Date.now().toString(),
+        content: `${isVideo ? 'Video' : 'Audio'} Upload: ${file.name}`,
+        role: "user",
+        timestamp: new Date(),
+        type: "file",
+        metadata: {
+          fileName: file.name,
+          fileSize: FileProcessor.formatFileSize(file.size)
+        }
+      }
+      
+      setMessages(prev => [...prev, fileMessage])
+      
+      const fd = new FormData()
+      fd.append('file', file)
+      
+      // Add API key to the request
+      const apiKey = getEffectiveApiKey()
+      if (apiKey) {
+        fd.append('apiKey', apiKey)
+        console.log('[handleAudioVideoFileUpload] Added API key to transcription request')
+      } else {
+        console.error('[handleAudioVideoFileUpload] No API key available for transcription')
+        throw new Error('OpenAI API key not configured. Please add your API key in settings.')
+      }
+      
+      const res = await fetch('/api/ai/transcribe', { method: 'POST', body: fd })
+      const tr = await res.json()
+      if (!res.ok) throw new Error(tr.error || 'Transcription failed')
+      const transcription = { text: tr.text, language: tr.language || 'en', confidence: 0.9 }
+      
+      // Add transcription message
+      const transcriptionMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `Transcription: ${transcription.text}\n\nLanguage: ${transcription.language}\nConfidence: ${Math.round(transcription.confidence * 100)} percent`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "voice",
+        metadata: { transcription }
+      }
+      
+      setMessages(prev => [...prev, transcriptionMessage])
+      
+      // Process with AI for HR insights
+      const key = getEffectiveApiKey()
+      if (key) {
+        const aiResponse = await AIProcessor.processHRQuery(transcription.text, key)
+        
+        const aiMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          content: aiResponse,
+          role: "assistant",
+          timestamp: new Date(),
+          type: "text"
+        }
+        
+        setMessages(prev => [...prev, aiMessage])
+      }
+      
+    } catch (transcriptionError) {
+      console.error('Transcription error:', transcriptionError)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `❌ Failed to transcribe audio: ${transcriptionError instanceof Error ? transcriptionError.message : 'Unknown error'}`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "text"
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsProcessingFile(false)
+    }
+  }
+
+  // Handle image file upload (for OCR)
+  const handleImageFileUpload = async (file: File) => {
+    try {
+      setIsProcessingFile(true)
+      
+      // Add file message for image files
+      const fileMessage: Message = {
+        id: Date.now().toString(),
+        content: `📸 Image Upload: ${file.name}`,
+        role: "user",
+        timestamp: new Date(),
+        type: "file",
+        metadata: {
+          fileName: file.name,
+          fileSize: FileProcessor.formatFileSize(file.size)
+        }
+      }
+      
+      setMessages(prev => [...prev, fileMessage])
+      
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/ai/ocr', { method: 'POST', body: fd })
+      const ocr = await res.json()
+      if (!res.ok) throw new Error(ocr.error || 'OCR failed')
+      const extractedText = { text: ocr.text, metadata: ocr.metadata }
+      
+      // Add OCR message
+      const ocrMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `OCR Result:\n\n${extractedText.text}\n\nConfidence: ${Math.round(extractedText.metadata?.confidence || 0)} percent`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "analysis",
+        metadata: { 
+                     analysis: { summary: 'Document analysis from OCR', keyPoints: [], sentiment: 'neutral', confidence: 0.8 },
+          file: file,
+          extractedText: extractedText,
+          requiresAction: true // Flag to show save/discard options
+        }
+      }
+      
+      setMessages(prev => [...prev, ocrMessage])
+
+      // Don't auto-store - let user choose
+      // The save/discard options will be handled by the UI
+
+    } catch (ocrError) {
+      console.error('OCR error:', ocrError)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `❌ Failed to extract text from image: ${ocrError instanceof Error ? ocrError.message : 'Unknown error'}`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "text"
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsProcessingFile(false)
+    }
+  }
+
+  // Handle archive file upload (for extraction)
+  const handleArchiveFileUpload = async (file: File) => {
+    try {
+      setIsProcessingFile(true)
+      
+      // Add file message for archive files
+      const fileMessage: Message = {
+        id: Date.now().toString(),
+        content: `📦 Archive Upload: ${file.name}`,
+        role: "user",
+        timestamp: new Date(),
+        type: "file",
+        metadata: {
+          fileName: file.name,
+          fileSize: FileProcessor.formatFileSize(file.size)
+        }
+      }
+      
+      setMessages(prev => [...prev, fileMessage])
+      
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/documents/extract', { method: 'POST', body: fd })
+      const ex = await res.json()
+      if (!res.ok) throw new Error(ex.error || 'Archive extraction failed')
+      const extractedText = ex.extracted
+      
+      // Add extraction message
+      const extractionMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `Archive Content:\n\n${extractedText.text}\n\nConfidence: ${Math.round(extractedText.metadata?.confidence || 0)} percent`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "analysis",
+        metadata: { 
+                     analysis: { summary: 'Document analysis from archive', keyPoints: [], sentiment: 'neutral', confidence: 0.8 },
+          file: file,
+          extractedText: extractedText,
+          requiresAction: true // Flag to show save/discard options
+        }
+      }
+      
+      setMessages(prev => [...prev, extractionMessage])
+
+      // Don't auto-store - let user choose
+      // The save/discard options will be handled by the UI
+
+    } catch (archiveError) {
+      console.error('Archive error:', archiveError)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `❌ Failed to extract content from archive: ${archiveError instanceof Error ? archiveError.message : 'Unknown error'}`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "text"
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsProcessingFile(false)
+    }
+  }
+
+  // Handle document file upload (for text extraction)
+  const handleDocumentFileUpload = async (file: File) => {
+    try {
+      setIsProcessingFile(true)
+      
+      // Add file message for document files
+      const fileMessage: Message = {
+        id: Date.now().toString(),
+        content: `📄 Document Upload: ${file.name}`,
+        role: "user",
+        timestamp: new Date(),
+        type: "file",
+        metadata: {
+          fileName: file.name,
+          fileSize: FileProcessor.formatFileSize(file.size)
+        }
+      }
+      
+      setMessages(prev => [...prev, fileMessage])
+      
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/documents/extract', { method: 'POST', body: fd })
+      const ex = await res.json()
+      if (!res.ok) throw new Error(ex.error || 'Document extraction failed')
+      const extractedText = ex.extracted
+      
+      // Add extraction message
+      const extractionMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `Document Content:\n\n${extractedText.text}\n\nConfidence: ${Math.round(extractedText.metadata?.confidence || 0)} percent`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "analysis",
+        metadata: { 
+                     analysis: { summary: 'Document analysis', keyPoints: [], sentiment: 'neutral', confidence: 0.8 },
+          file: file,
+          extractedText: extractedText,
+          requiresAction: true // Flag to show save/discard options
+        }
+      }
+      
+      setMessages(prev => [...prev, extractionMessage])
+
+      // Don't auto-store - let user choose
+      // The save/discard options will be handled by the UI
+
+    } catch (documentError) {
+      console.error('Document error:', documentError)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `Failed to extract text from document: ${documentError instanceof Error ? documentError.message : 'Unknown error'}`,
+        role: "assistant",
+        timestamp: new Date(),
+        type: "text"
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsProcessingFile(false)
     }
   }
 
@@ -571,6 +962,17 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
       try {
         const fd = new FormData()
         fd.append('file', new File([audioBlob], 'audio.webm', { type: 'audio/webm' }))
+        
+        // Add API key to the request
+        const apiKey = getEffectiveApiKey()
+        if (apiKey) {
+          fd.append('apiKey', apiKey)
+          console.log('[stopRecording] Added API key to transcription request')
+        } else {
+          console.error('[stopRecording] No API key available for transcription')
+          throw new Error('OpenAI API key not configured. Please add your API key in settings.')
+        }
+        
         const res = await fetch('/api/ai/transcribe', { method: 'POST', body: fd })
         const tr = await res.json()
         if (!res.ok) throw new Error(tr.error || 'Transcription failed')
@@ -713,10 +1115,17 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
           await voiceSynthesizer.speak(text)
         } catch (error) {
           const msg = error instanceof Error ? error.message : JSON.stringify(error || {})
+          
+          // Filter out normal "interrupted" errors that aren't actual failures
+          if (msg === 'interrupted' || msg.includes('interrupted')) {
+            console.log('Text-to-speech interrupted (normal behavior)')
+            return
+          }
+          
           console.error('Error speaking text:', msg)
           setMessages(prev => [...prev, {
-            id: (Date.now() + 3).toString(),
-            content: `🔇 Text-to-speech failed${msg ? `: ${msg}` : ''}. Please ensure your browser allows audio and try again.`,
+            id: Date.now().toString(),
+            content: `Text to speech failed: ${msg}. Please ensure your browser allows audio and try again.`,
             role: 'assistant',
             timestamp: new Date(),
             type: 'text'
@@ -815,31 +1224,43 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
               <p style={{ fontSize: '14px', fontWeight: '500', marginTop: '4px', margin: '4px 0 0 0' }}>{message.metadata?.fileName}</p>
               <p style={{ fontSize: '12px', color: isDarkMode ? '#9ca3af' : '#475569', margin: '0' }}>{message.metadata?.fileSize}</p>
               
-              {/* File type indicator */}
-              {message.metadata?.fileName && (
-                <div style={{
-                  marginTop: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  {message.metadata.fileName.toLowerCase().endsWith('.pdf') && (
-                    <span style={{ fontSize: '10px', color: '#dc2626' }}>📄 PDF</span>
-                  )}
-                  {message.metadata.fileName.toLowerCase().endsWith('.csv') && (
-                    <span style={{ fontSize: '10px', color: '#059669' }}>📊 CSV</span>
-                  )}
-                  {message.metadata.fileName.toLowerCase().match(/\.(wav|mp3|m4a)$/i) && (
-                    <span style={{ fontSize: '10px', color: '#7c3aed' }}>🎵 Audio</span>
-                  )}
-                  {message.metadata.fileName.toLowerCase().match(/\.(doc|docx)$/i) && (
-                    <span style={{ fontSize: '10px', color: '#2563eb' }}>📝 Word</span>
-                  )}
-                  {message.metadata.fileName.toLowerCase().endsWith('.txt') && (
-                    <span style={{ fontSize: '10px', color: '#6b7280' }}>📄 Text</span>
-                  )}
-                </div>
-              )}
+                             {/* File type indicator */}
+               {message.metadata?.fileName && (
+                 <div style={{
+                   marginTop: '4px',
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '4px'
+                 }}>
+                   {message.metadata.fileName.toLowerCase().endsWith('.pdf') && (
+                     <span style={{ fontSize: '10px', color: '#dc2626' }}>📄 PDF</span>
+                   )}
+                   {message.metadata.fileName.toLowerCase().match(/\.(csv|xls|xlsx|ods)$/i) && (
+                     <span style={{ fontSize: '10px', color: '#059669' }}>📊 Spreadsheet</span>
+                   )}
+                   {message.metadata.fileName.toLowerCase().match(/\.(ppt|pptx|odp)$/i) && (
+                     <span style={{ fontSize: '10px', color: '#7c3aed' }}>📊 Presentation</span>
+                   )}
+                   {message.metadata.fileName.toLowerCase().match(/\.(wav|mp3|m4a|aac|ogg|flac)$/i) && (
+                     <span style={{ fontSize: '10px', color: '#7c3aed' }}>🎵 Audio</span>
+                   )}
+                   {message.metadata.fileName.toLowerCase().match(/\.(mp4|avi|mov|wmv|flv|webm|mkv|3gp)$/i) && (
+                     <span style={{ fontSize: '10px', color: '#dc2626' }}>🎬 Video</span>
+                   )}
+                   {message.metadata.fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|bmp|tiff|svg|webp)$/i) && (
+                     <span style={{ fontSize: '10px', color: '#059669' }}>🖼️ Image</span>
+                   )}
+                   {message.metadata.fileName.toLowerCase().match(/\.(doc|docx|rtf|odt|pages)$/i) && (
+                     <span style={{ fontSize: '10px', color: '#2563eb' }}>📝 Document</span>
+                   )}
+                   {message.metadata.fileName.toLowerCase().match(/\.(txt|md)$/i) && (
+                     <span style={{ fontSize: '10px', color: '#6b7280' }}>📄 Text</span>
+                   )}
+                   {message.metadata.fileName.toLowerCase().match(/\.(zip|rar|7z|tar|gz)$/i) && (
+                     <span style={{ fontSize: '10px', color: '#f59e0b' }}>📦 Archive</span>
+                   )}
+                 </div>
+               )}
             </div>
           )}
           
@@ -924,40 +1345,67 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
                     }
                   }}
                   style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#10b981',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    fontWeight: '500',
+                    padding: '12px',
+                    backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                    color: isDarkMode ? '#22c55e' : '#166534',
+                    border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`,
+                    borderRadius: '8px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    justifyContent: 'center',
+                    width: '44px',
+                    height: '44px',
+                    transition: 'all 0.2s ease'
                   }}
                   title="Save document to RAG for future search and AI queries"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.2)'
+                    e.currentTarget.style.transform = 'scale(1.05)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.1)'
+                    e.currentTarget.style.transform = 'scale(1)'
+                  }}
                 >
-                  💾 Save to RAG
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17,21 17,13 7,13 7,21"/>
+                    <polyline points="7,3 7,8 15,8"/>
+                  </svg>
                 </button>
                 <button
                   onClick={() => discardDocument(message.id)}
                   style={{
-                    padding: '8px 16px',
-                    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.8)' : '#ef4444',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    fontWeight: '500',
+                    padding: '12px',
+                    backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    color: isDarkMode ? '#ef4444' : '#dc2626',
+                    border: `1px solid ${isDarkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                    borderRadius: '8px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    justifyContent: 'center',
+                    width: '44px',
+                    height: '44px',
+                    transition: 'all 0.2s ease'
                   }}
                   title="Discard document analysis"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+                    e.currentTarget.style.transform = 'scale(1.05)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                    e.currentTarget.style.transform = 'scale(1)'
+                  }}
                 >
-                  🗑️ Discard
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3,6 5,6 21,6"/>
+                    <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                    <line x1="10" y1="11" x2="10" y2="17"/>
+                    <line x1="14" y1="11" x2="14" y2="17"/>
+                  </svg>
                 </button>
               </div>
             </div>
@@ -967,39 +1415,42 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
           {message.type === "analysis" && message.metadata?.savedToRAG && (
             <div style={{
               marginTop: '12px',
-              padding: '8px 12px',
+              padding: '6px 10px',
               backgroundColor: 'rgba(34, 197, 94, 0.1)',
               color: '#166534',
               borderRadius: '6px',
-              fontSize: '12px',
+              fontSize: '11px',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '4px'
             }}>
-              ✅ Saved to RAG - Document is now searchable and available for AI queries
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              Saved to RAG
             </div>
           )}
         </div>
         
-        {message.role === "assistant" && (
-          <button
-            onClick={() => handleSpeakResponse(message.content)}
-            style={{
-              marginLeft: '8px',
-              borderRadius: '50%',
-              padding: '8px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px'
-            }}
-            title={isSpeaking ? (voiceSynthesizer?.isCurrentlyPaused() ? "Resume" : "Pause") : "Play"}
-          >
+                 {message.role === "assistant" && (
+           <button
+             onClick={() => handleSpeakResponse(message.content)}
+             style={{
+               marginLeft: '8px',
+               borderRadius: '50%',
+               padding: '8px',
+               backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.1)',
+               border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(15, 23, 42, 0.2)'}`,
+               color: isDarkMode ? 'white' : '#0f172a',
+               cursor: 'pointer',
+               display: 'flex',
+               alignItems: 'center',
+               justifyContent: 'center',
+               width: '36px',
+               height: '36px'
+             }}
+             title={isSpeaking ? (voiceSynthesizer?.isCurrentlyPaused() ? "Resume" : "Pause") : "Play"}
+           >
             {isSpeaking ? (
               voiceSynthesizer?.isCurrentlyPaused() ? (
                 <Volume2 size={16} />
@@ -1017,6 +1468,58 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
 
   // Debug auth modal state
   console.log('🔐 Auth modal state before render:', { isAuthOpen, user, isDarkMode })
+
+  // Function to get current AI instructions for display
+  const getCurrentAIInstructions = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const general = localStorage.getItem('voiceloophr-ai-instructions-general')
+        const user = localStorage.getItem('voiceloophr-ai-instructions-user')
+        
+        if (general && general !== 'You are an intelligent Human Resources assistant. Help users with document analysis, resume review, interview preparation, and Human Resources related questions. Be professional, helpful, and concise.') {
+          return `\n\nAI personality: ${general.split('\n')[0].replace('You are ', '').replace('.', '')}`
+        }
+        if (user && user.trim()) {
+          return `\n\nYour preferences: ${user}`
+        }
+      }
+    } catch (e) {
+      console.log('Could not load AI instructions for display')
+    }
+    return ''
+  }
+  
+  // Update welcome message when AI instructions change
+  useEffect(() => {
+    const updateWelcomeMessage = () => {
+      const instructions = getCurrentAIInstructions()
+      if (instructions) {
+        setMessages(prev => {
+          if (prev.length > 0 && prev[0].id === "1") {
+            return [{
+              ...prev[0],
+              content: prev[0].content + instructions
+            }, ...prev.slice(1)]
+          }
+          return prev
+        })
+      }
+    }
+    
+    // Listen for changes to AI instructions
+    const handleStorageChange = () => {
+      updateWelcomeMessage()
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also check on mount
+    updateWelcomeMessage()
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [])
 
   return (
     <div style={{
@@ -1112,6 +1615,31 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
             </button>
             {/* tiny live state indicator */}
             {isCalendarOpen && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#22d3ee' }} />}
+            
+            {/* Candidate Resources (navigate) */}
+            <button
+              onClick={handleOpenCandidateResources}
+              aria-label="Candidate Resources"
+              title="Candidate Resources"
+              style={{
+                borderRadius: '50%',
+                padding: '8px',
+                backgroundColor: ui.controlBg,
+                border: `1px solid ${ui.controlBorder}`,
+                color: ui.textPrimary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                cursor: 'pointer'
+              }}
+            >
+              <Users size={16} />
+            </button>
+            {/* tiny live state indicator */}
+            {isCandidateResourcesOpen && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#22d3ee' }} />}
+            
             {/* Volume Control */}
             <div style={{
               display: 'flex',
@@ -1348,14 +1876,45 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
                 <input
                   type="file"
                   ref={fileInputRef}
-                  onChange={handleFileUpload}
+                  onChange={(e) => {
+                    console.log('[FileUpload] File input onChange triggered:', e)
+                    console.log('[FileUpload] Event target:', e.target)
+                    console.log('[FileUpload] Files:', e.target?.files)
+                    
+                    // Prevent multiple processing
+                    if (isProcessingFile) {
+                      console.log('[FileUpload] Already processing file, ignoring change event')
+                      return
+                    }
+                    
+                    if (e.target?.files && e.target.files.length > 0) {
+                      console.log('[FileUpload] Processing file selection')
+                      handleFileUpload(e)
+                    } else {
+                      console.log('[FileUpload] No files selected in onChange')
+                    }
+                  }}
                   style={{ display: 'none' }}
-                  accept=".pdf,.doc,.docx,.txt"
+                                     accept=".pdf,.doc,.docx,.txt,.md,.rtf,.odt,.pages,.csv,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.wav,.mp3,.m4a,.aac,.ogg,.flac,.mp4,.avi,.mov,.wmv,.flv,.webm,.mkv,.3gp,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg,.webp,.zip,.rar,.7z,.tar,.gz"
                   disabled={isProcessingFile}
                 />
                 
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    console.log('[FileUpload] File input button clicked')
+                    console.log('[FileUpload] fileInputRef.current:', fileInputRef.current)
+                    if (fileInputRef.current) {
+                      // Additional validation
+                      if (fileInputRef.current.files && fileInputRef.current.files.length > 0) {
+                        console.log('[FileUpload] File input already has files, clearing...')
+                        fileInputRef.current.value = ''
+                      }
+                      fileInputRef.current.click()
+                      console.log('[FileUpload] File input click triggered')
+                    } else {
+                      console.error('[FileUpload] File input reference is null')
+                    }
+                  }}
                   style={{
                     borderRadius: '50%',
                     padding: '8px',
@@ -1411,7 +1970,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask me about HR, upload documents, or use voice commands..."
+                  placeholder="Ask me about Human Resources, upload documents, or use voice commands..."
                   style={{
                     flex: 1,
                     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.9)',
@@ -1494,6 +2053,13 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Candidate Resources Window */}
+      <CandidateResourcesModal
+        isOpen={isCandidateResourcesOpen}
+        onClose={() => setIsCandidateResourcesOpen(false)}
         isDarkMode={isDarkMode}
       />
 

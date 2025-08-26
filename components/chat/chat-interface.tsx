@@ -50,7 +50,7 @@ export function ChatInterface({ isDarkMode, onToggleTheme }: ChatInterfaceProps)
       console.log("[v0] File selected:", file.name)
       const userMessage: Message = {
         id: Date.now().toString(),
-        content: `📎 Uploaded file: ${file.name}`,
+        content: `Uploaded file: ${file.name}`,
         role: "user",
         timestamp: new Date(),
       }
