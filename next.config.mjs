@@ -25,6 +25,21 @@ const nextConfig = {
         destination: '/api/:path*'
       }
     ]
+  },
+
+  // Prevent static generation issues
+  experimental: {
+    // Disable static optimization for problematic pages
+    workerThreads: false,
+    cpus: 1
+  },
+
+  // Ensure proper build output
+  output: 'standalone',
+  
+  // Disable static generation for problematic routes
+  async generateStaticParams() {
+    return []
   }
 }
 
