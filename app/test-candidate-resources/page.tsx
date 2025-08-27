@@ -1,9 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
+import dynamic from 'next/dynamic'
 import { WaveAnimation } from "@/components/ui/wave-animation-background"
 import { AuthProvider } from "@/contexts/auth-context"
+
+// Dynamic import to prevent build-time issues
+const EnhancedChatInterface = dynamic(() => import('@/components/chat/enhanced-chat-interface').then(mod => ({ default: mod.EnhancedChatInterface })), {
+  ssr: false,
+  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
+})
 
 export default function TestCandidateResourcesPage() {
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -49,3 +55,6 @@ export default function TestCandidateResourcesPage() {
     </AuthProvider>
   )
 }
+
+// Prevent static generation
+export const dynamic = 'force-dynamic'
