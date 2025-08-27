@@ -1,0 +1,183 @@
+2025-08-27T22:22:07.504Z [INFO]: # Build environment configured with Standard build compute type: 8GiB Memory, 4vCPUs, 128GB Disk Space
+2025-08-27T22:22:07.971Z [INFO]: # Cloning repository: git@github.com:teamloophr/Voiceloophr.git
+2025-08-27T22:22:08.685Z [INFO]: 
+2025-08-27T22:22:08.686Z [INFO]: Cloning into 'Voiceloophr'...
+2025-08-27T22:22:08.686Z [INFO]: # Switching to commit: daba454bfb7e7b5c802bfc526dc3d2a81aaf7291
+2025-08-27T22:22:08.708Z [INFO]: Note: switching to 'daba454bfb7e7b5c802bfc526dc3d2a81aaf7291'.
+                                 You are in 'detached HEAD' state. You can look around, make experimental
+                                 changes and commit them, and you can discard any commits you make in this
+                                 state without impacting any branches by switching back to a branch.
+                                 If you want to create a new branch to retain commits you create, you may
+                                 do so (now or later) by using -c with the switch command. Example:
+                                 git switch -c <new-branch-name>
+                                 Or undo this operation with:
+                                 git switch -
+                                 Turn off this advice by setting config variable advice.detachedHead to false
+                                 HEAD is now at daba454 fix: Simplify documents page to isolate compilation error
+2025-08-27T22:22:08.784Z [INFO]: Successfully cleaned up Git credentials
+2025-08-27T22:22:08.784Z [INFO]: # Checking for Git submodules at: /codebuild/output/src2930771774/src/Voiceloophr/.gitmodules
+2025-08-27T22:22:08.792Z [INFO]: # Retrieving environment cache...
+2025-08-27T22:22:08.842Z [WARNING]: ! Unable to write cache: {"code":"ERR_BAD_REQUEST","message":"Request failed with status code 404"})}
+2025-08-27T22:22:08.842Z [INFO]: ---- Setting Up SSM Secrets ----
+2025-08-27T22:22:08.842Z [INFO]: SSM params {"Path":"/amplify/d1fx10pzvtm51o/main/","WithDecryption":true}
+2025-08-27T22:22:08.894Z [WARNING]: !Failed to set up process.env.secrets
+2025-08-27T22:22:09.825Z [INFO]: # No package override configuration found.
+2025-08-27T22:22:09.829Z [INFO]: # Retrieving cache...
+2025-08-27T22:23:16.798Z [INFO]: # Extracting cache...
+2025-08-27T22:24:01.671Z [INFO]: # Extraction completed
+2025-08-27T22:24:02.127Z [INFO]: # Retrieved cache
+2025-08-27T22:24:07.001Z [INFO]: ## Starting Backend Build
+                                 ## Checking for associated backend environment...
+                                 ## No backend environment association found, continuing...
+                                 ## Completed Backend Build
+2025-08-27T22:24:07.007Z [INFO]: {"backendDuration": 0}
+                                 ## Starting Frontend Build
+                                 # Starting phase: preBuild
+                                 # Executing command: npm install -g pnpm
+2025-08-27T22:24:24.028Z [INFO]: added 1 package in 13s
+2025-08-27T22:24:24.033Z [INFO]: 1 package is looking for funding
+                                 run `npm fund` for details
+2025-08-27T22:24:24.041Z [INFO]: # Executing command: pnpm install
+2025-08-27T22:24:24.627Z [INFO]: Recreating /codebuild/output/src2930771774/src/Voiceloophr/node_modules
+2025-08-27T22:24:29.885Z [INFO]: Lockfile is up to date, resolution step is skipped
+2025-08-27T22:24:29.944Z [INFO]: Progress: resolved 1, reused 0, downloaded 0, added 0
+2025-08-27T22:24:30.032Z [INFO]: Packages: +558
+                                 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2025-08-27T22:24:30.973Z [INFO]: Progress: resolved 558, reused 0, downloaded 140, added 121
+2025-08-27T22:24:31.984Z [INFO]: Progress: resolved 558, reused 0, downloaded 174, added 137
+2025-08-27T22:24:32.984Z [INFO]: Progress: resolved 558, reused 0, downloaded 179, added 141
+2025-08-27T22:24:33.990Z [INFO]: Progress: resolved 558, reused 0, downloaded 201, added 145
+2025-08-27T22:24:34.991Z [INFO]: Progress: resolved 558, reused 0, downloaded 265, added 177
+2025-08-27T22:24:35.992Z [INFO]: Progress: resolved 558, reused 0, downloaded 324, added 194
+2025-08-27T22:24:36.992Z [INFO]: Progress: resolved 558, reused 0, downloaded 510, added 494
+2025-08-27T22:24:37.431Z [INFO]: Progress: resolved 558, reused 0, downloaded 558, added 558, done
+2025-08-27T22:24:39.465Z [INFO]: dependencies:
+                                 + @hookform/resolvers 3.10.0
+                                 + @radix-ui/react-accordion 1.2.2
+                                 + @radix-ui/react-alert-dialog 1.1.4
+                                 + @radix-ui/react-aspect-ratio 1.1.1
+                                 + @radix-ui/react-avatar 1.1.2
+                                 + @radix-ui/react-checkbox 1.1.3
+                                 + @radix-ui/react-collapsible 1.1.2
+                                 + @radix-ui/react-context-menu 2.2.4
+                                 + @radix-ui/react-dialog 1.1.4
+                                 + @radix-ui/react-dropdown-menu 2.1.4
+                                 + @radix-ui/react-hover-card 1.1.4
+                                 + @radix-ui/react-label 2.1.7
+                                 + @radix-ui/react-menubar 1.1.4
+                                 + @radix-ui/react-navigation-menu 1.2.3
+                                 + @radix-ui/react-popover 1.1.4
+                                 + @radix-ui/react-progress 1.1.7
+                                 + @radix-ui/react-radio-group 1.2.2
+                                 + @radix-ui/react-scroll-area 1.2.10
+                                 + @radix-ui/react-select 2.2.6
+                                 + @radix-ui/react-separator 1.1.1
+                                 + @radix-ui/react-slider 1.2.2
+                                 + @radix-ui/react-slot 1.2.3
+                                 + @radix-ui/react-switch 1.1.2
+                                 + @radix-ui/react-tabs 1.1.2
+                                 + @radix-ui/react-toast 1.2.4
+                                 + @radix-ui/react-toggle 1.1.1
+                                 + @radix-ui/react-toggle-group 1.1.1
+                                 + @radix-ui/react-tooltip 1.1.6
+                                 + @supabase/auth-helpers-nextjs 0.10.0
+                                 + @supabase/supabase-js 2.56.0
+                                 + autoprefixer 10.4.20
+                                 + class-variance-authority 0.7.1
+                                 + clsx 2.1.1
+                                 + cmdk 1.0.4
+                                 + date-fns 4.1.0
+                                 + embla-carousel-react 8.5.1
+                                 + geist 1.4.2
+                                 + input-otp 1.4.1
+                                 + lucide-react 0.454.0
+                                 + mammoth 1.10.0
+                                 + next 15.5.0
+                                 + next-themes 0.4.6
+                                 + openai 5.15.0
+                                 + pdfjs-dist 5.4.54
+                                 + react 19.0.0
+                                 + react-day-picker 9.8.0
+                                 + react-dom 19.0.0
+                                 + react-hook-form 7.60.0
+                                 + react-icons 5.5.0
+                                 + react-resizable-panels 2.1.7
+                                 + recharts 2.15.4
+                                 + sonner 1.7.4
+                                 + tailwind-merge 2.5.5
+                                 + tailwindcss-animate 1.0.7
+                                 + three 0.179.1
+                                 + vaul 0.9.9
+                                 + xlsx 0.18.5
+                                 + zod 3.25.67
+                                 devDependencies:
+                                 + @tailwindcss/postcss 4.1.9
+                                 + @types/node 22.0.0
+                                 + @types/react 19.0.0
+                                 + @types/react-dom 19.0.0
+                                 + @types/three 0.179.0
+                                 + @typescript-eslint/eslint-plugin 8.41.0
+                                 + @typescript-eslint/parser 8.41.0
+                                 + eslint 9.34.0
+                                 + eslint-config-next 15.5.0
+                                 + postcss 8.5.0
+                                 + tailwindcss 4.1.9
+                                 + tw-animate-css 1.3.3
+                                 + typescript 5.0.2
+                                 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+                                 │                                                                              │
+                                 │   Ignored build scripts: @tailwindcss/oxide, sharp, unrs-resolver.           │
+                                 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+                                 │   to run scripts.                                                            │
+                                 │                                                                              │
+                                 ╰──────────────────────────────────────────────────────────────────────────────╯
+2025-08-27T22:24:39.508Z [INFO]: Done in 15.4s using pnpm v10.15.0
+2025-08-27T22:24:39.546Z [INFO]: # Completed phase: preBuild
+                                 # Starting phase: build
+                                 # Executing command: pnpm build
+2025-08-27T22:24:39.944Z [INFO]: > my-v0-project@0.1.0 build /codebuild/output/src2930771774/src/Voiceloophr
+                                 > next build
+2025-08-27T22:24:40.640Z [WARNING]: ⚠ Invalid next.config.mjs options detected:
+2025-08-27T22:24:40.640Z [WARNING]: ⚠     Unrecognized key(s) in object: 'generateStaticParams'
+                                    ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+2025-08-27T22:24:40.706Z [INFO]: ▲ Next.js 15.5.0
+2025-08-27T22:24:40.707Z [INFO]: - Experiments (use with caution):
+                                 · cpus: 1
+2025-08-27T22:24:40.799Z [INFO]: Creating an optimized production build ...
+2025-08-27T22:25:00.251Z [INFO]: ✓ Compiled successfully in 16.8s
+2025-08-27T22:25:00.257Z [INFO]: Skipping validation of types
+                                 Skipping linting
+2025-08-27T22:25:00.508Z [INFO]: Collecting page data ...
+2025-08-27T22:25:00.950Z [WARNING]: ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+2025-08-27T22:25:03.869Z [INFO]: Generating static pages (0/26) ...
+2025-08-27T22:25:04.454Z [WARNING]: ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+2025-08-27T22:25:04.565Z [WARNING]: ⚠ Unsupported metadata viewport is configured in metadata export in /_not-found. Please move it to viewport export instead.
+                                    Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2025-08-27T22:25:04.579Z [INFO]: Generating static pages (6/26)
+2025-08-27T22:25:04.580Z [INFO]: Generating static pages (12/26)
+2025-08-27T22:25:04.696Z [WARNING]: ⚠ Unsupported metadata viewport is configured in metadata export in /ai-assistant. Please move it to viewport export instead.
+                                    Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2025-08-27T22:25:05.229Z [WARNING]: ⚠ Unsupported metadata viewport is configured in metadata export in /calendar. Please move it to viewport export instead.
+                                    Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+                                    ⚠ Unsupported metadata viewport is configured in metadata export in /voice. Please move it to viewport export instead.
+                                    Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2025-08-27T22:25:05.272Z [WARNING]: ⚠ Unsupported metadata viewport is configured in metadata export in /test-rag. Please move it to viewport export instead.
+                                    Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+                                    ⚠ Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+                                    Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+2025-08-27T22:25:05.334Z [WARNING]: ⚠️  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217
+                                    Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+                                    ReferenceError: Cannot access 'j' before initialization
+                                    at 11600 (.next/server/app/page.js:1:1340)
+                                    at Object.c [as require] (.next/server/webpack-runtime.js:1:128) {
+                                    digest: '1745293838'
+                                    }
+                                    Export encountered an error on /page: /, exiting the build.
+2025-08-27T22:25:05.338Z [WARNING]: ⨯ Next.js build worker exited with code: 1 and signal: null
+2025-08-27T22:25:05.373Z [INFO]: ELIFECYCLE  Command failed with exit code 1.
+2025-08-27T22:25:05.385Z [ERROR]: !!! Build failed
+2025-08-27T22:25:05.386Z [INFO]: Please read more about Amplify Hosting's support for SSR frameworks to find if your build failure is related to an unsupported feature: https://docs.aws.amazon.com/amplify/latest/userguide/amplify-ssr-framework-support.html. You may also find this troubleshooting guide useful: https://docs.aws.amazon.com/amplify/latest/userguide/troubleshooting-ssr-deployment.html
+2025-08-27T22:25:05.386Z [ERROR]: !!! Error: Command failed with exit code 1
+2025-08-27T22:25:05.386Z [INFO]: # Starting environment caching...
+2025-08-27T22:25:05.386Z [INFO]: # Environment caching completed
+
