@@ -1,18 +1,6 @@
 "use client"
 
-import dynamic from 'next/dynamic'
 import { AuthProvider } from "@/contexts/auth-context"
-
-// Dynamic imports to prevent build-time issues
-const DocumentUpload = dynamic(() => import("@/components/documents/document-upload").then(mod => ({ default: mod.DocumentUpload })), {
-  ssr: false,
-  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
-})
-
-const DocumentList = dynamic(() => import("@/components/documents/document-list").then(mod => ({ default: mod.DocumentList })), {
-  ssr: false,
-  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-lg"></div>
-})
 
 export default function DocumentsPage() {
   return (
@@ -43,8 +31,10 @@ export default function DocumentsPage() {
               </p>
             </div>
 
-            <DocumentUpload />
-            <DocumentList />
+            {/* Temporary placeholder */}
+            <div className="bg-gray-100 p-8 rounded-lg text-center">
+              <p className="text-gray-600">Document components temporarily disabled for debugging</p>
+            </div>
           </div>
         </main>
       </div>
