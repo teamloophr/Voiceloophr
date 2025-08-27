@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { X, Save, Eye, EyeOff, Key, Database, Bot, Globe, Shield, User, Volume2 } from "lucide-react"
+import React, { useState, useRef, useEffect } from "react"
+import { X, Palette, Volume2, Monitor, Sun, Moon, RotateCcw, Shield, User, Bot, Eye, EyeOff, Save, Globe, Key, Database } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,6 +14,9 @@ interface SettingsPanelProps {
   onClose: () => void
   isDarkMode: boolean
   onSettingsSaved?: () => void
+  onToggleTheme: () => void
+  volume: number
+  onVolumeChange: (volume: number) => void
 }
 
 interface APISettings {
@@ -23,7 +26,15 @@ interface APISettings {
   elevenLabsApiKey: string
 }
 
-export function SettingsPanel({ isOpen, onClose, isDarkMode, onSettingsSaved }: SettingsPanelProps) {
+export function SettingsPanel({ 
+  isOpen, 
+  onClose, 
+  isDarkMode, 
+  onSettingsSaved, 
+  onToggleTheme, 
+  volume, 
+  onVolumeChange 
+}: SettingsPanelProps) {
   const { user, getUserSettings, saveUserSettings, isGuest } = useAuth()
   const [settings, setSettings] = useState<APISettings>({
     openaiApiKey: "",
@@ -39,6 +50,13 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onSettingsSaved }: 
   const [isLoading, setIsLoading] = useState(false)
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle")
 
+  // Color customization state
+  const [customColors, setCustomColors] = useState({
+    primary: isDarkMode ? '#000000' : '#ffffff',
+    secondary: isDarkMode ? '#1a1a1a' : '#f8fafc',
+    accent: isDarkMode ? '#60a5fa' : '#3b82f6'
+  })
+
   // Modern UI tokens (true black/white, thin lines)
   const ui = {
     bg: isDarkMode ? "#000000" : "#ffffff",
@@ -50,6 +68,12 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onSettingsSaved }: 
     line: isDarkMode ? "rgba(255,255,255,0.14)" : "rgba(15,23,42,0.12)",
     accent: isDarkMode ? "#22d3ee" : "#0ea5e9"
   }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    if (isOpen) document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [isOpen, onClose])
 
   // Load settings from database or local storage when panel opens
   useEffect(() => {
@@ -150,6 +174,35 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onSettingsSaved }: 
   const validateElevenLabsKey = (key: string) => {
     // ElevenLabs API keys are typically 32+ characters and may contain letters, numbers, and hyphens
     return key.length >= 32 && /^[a-zA-Z0-9-]+$/.test(key)
+  }
+
+  const handleColorChange = (colorType: keyof typeof customColors, value: string) => {
+    setCustomColors(prev => ({ ...prev, [colorType]: value }))
+    
+    // Apply color to CSS custom properties
+    const root = document.documentElement
+    if (colorType === 'primary') {
+      root.style.setProperty('--custom-bg-primary', value)
+    } else if (colorType === 'secondary') {
+      root.style.setProperty('--custom-bg-secondary', value)
+    } else if (colorType === 'accent') {
+      root.style.setProperty('--custom-accent', value)
+    }
+  }
+
+  const resetColors = () => {
+    const defaultColors = {
+      primary: isDarkMode ? '#000000' : '#ffffff',
+      secondary: isDarkMode ? '#1a1a1a' : '#f8fafc',
+      accent: isDarkMode ? '#60a5fa' : '#3b82f6'
+    }
+    setCustomColors(defaultColors)
+    
+    // Reset CSS custom properties
+    const root = document.documentElement
+    root.style.removeProperty('--custom-bg-primary')
+    root.style.removeProperty('--custom-bg-secondary')
+    root.style.removeProperty('--custom-accent')
   }
 
   if (!isOpen) return null

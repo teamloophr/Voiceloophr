@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from "react"
-import { Send, Sun, Moon, Paperclip, Mic, Volume2, Settings, LogOut, Calendar as CalendarIcon, LogIn, Users } from "lucide-react"
+import { Send, Sun, Moon, Paperclip, Mic, Volume2, Settings, LogOut, Calendar as CalendarIcon, LogIn, Users, User } from "lucide-react"
+import CandidateProfilePanel from "@/components/candidate-resources/candidate-profile-panel"
 import CalendarModal from "@/components/calendar/calendar-modal"
-import AuthModal from "@/components/auth/auth-modal"
+import { AuthModal } from "@/components/auth/auth-modal"
 import CandidateResourcesModal from "@/components/candidate-resources/candidate-resources-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -66,6 +67,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [isAuthOpen, setIsAuthOpen] = useState(false)
   const [isCandidateResourcesOpen, setIsCandidateResourcesOpen] = useState(false)
+  const [isCandidateProfileOpen, setIsCandidateProfileOpen] = useState(false)
   const [volume, setVolume] = useState(1.0)
   // Drag state for message bubbles
   const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({})
@@ -149,6 +151,10 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
     try { console.debug('[UI] Open Candidate Resources clicked') } catch {}
     setIsCandidateResourcesOpen(true)
     try { window.location.hash = '#candidate-resources' } catch {}
+  }
+  const handleOpenCandidateProfile = () => {
+    try { console.debug('[UI] Open Candidate Profile clicked') } catch {}
+    setIsCandidateProfileOpen(true)
   }
 
   // Open via hash for reliability (and to debug routing)
@@ -810,17 +816,21 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
       const extractedText = ex.extracted
       
       // Add extraction message
+      const contentPreview = (extractedText?.text || '').trim()
+      const hasContent = contentPreview.length > 0
       const extractionMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Document Content:\n\n${extractedText.text}\n\nConfidence: ${Math.round(extractedText.metadata?.confidence || 0)} percent`,
+        content: hasContent
+          ? `Archive Content:\n\n${contentPreview}\n\nConfidence: ${Math.round(extractedText.metadata?.confidence || 0)} percent`
+          : 'We could not extract readable text from this file. You can still save it to your archive or try another format (DOCX/TXT).',
         role: "assistant",
         timestamp: new Date(),
-        type: "analysis",
+        type: hasContent ? "analysis" : "text",
         metadata: { 
-                     analysis: { summary: 'Document analysis', keyPoints: [], sentiment: 'neutral', confidence: 0.8 },
+          analysis: { summary: 'Document analysis', keyPoints: [], sentiment: 'neutral', confidence: 0.8 },
           file: file,
           extractedText: extractedText,
-          requiresAction: true // Flag to show save/discard options
+          requiresAction: true
         }
       }
       
@@ -1200,10 +1210,16 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
   }
 
   const handleVolumeChange = (newVolume: number) => {
-    setVolume(newVolume)
+    // Immediately update the volume for responsive audio changes
     if (voiceSynthesizer) {
       voiceSynthesizer.setVolume(newVolume)
     }
+    
+    // Update the UI state
+    setVolume(newVolume)
+    
+    // Log for debugging
+    console.log(`[EnhancedChatInterface] Volume updated to: ${newVolume} (${Math.round(newVolume * 100)}%)`)
   }
 
   const renderMessage = (message: Message) => {
@@ -1343,8 +1359,8 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
             <div style={{ marginBottom: '8px' }}>
               <span style={{
                 fontSize: '12px',
-                backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                color: isDarkMode ? '#86efac' : '#166534',
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                color: isDarkMode ? '#e5e7eb' : '#111827',
                 padding: '4px 8px',
                 borderRadius: '12px',
                 display: 'inline-block'
@@ -1408,9 +1424,9 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
                   }}
                   style={{
                     padding: '12px',
-                    backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                    color: isDarkMode ? '#22c55e' : '#166534',
-                    border: `1px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`,
+                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                    color: isDarkMode ? '#e5e7eb' : '#111827',
+                    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)'}`,
                     borderRadius: '8px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -1422,11 +1438,11 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
                   }}
                   title="Save document to RAG for future search and AI queries"
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.2)'
+                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'
                     e.currentTarget.style.transform = 'scale(1.05)'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.1)'
+                    e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)'
                     e.currentTarget.style.transform = 'scale(1)'
                   }}
                 >
@@ -1478,8 +1494,8 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
             <div style={{
               marginTop: '12px',
               padding: '6px 10px',
-              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-              color: '#166534',
+              backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+              color: isDarkMode ? '#e5e7eb' : '#111827',
               borderRadius: '6px',
               fontSize: '11px',
               display: 'flex',
@@ -1617,38 +1633,137 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         flexDirection: 'column',
         minHeight: '100vh'
       }}>
-        {/* Simple Navbar */}
+        {/* Mobile-Optimized Navbar */}
         <nav style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '12px 16px',
-          borderBottom: `1px solid ${ui.borderGlass}`
+          borderBottom: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)'}`,
+          backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1000,
+          minHeight: '80px'
         }}>
+          {/* Logo and Brand Section */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '16px'
+            gap: '16px',
+            flexShrink: 0,
+            minWidth: 0
           }}>
             <img
               src={isDarkMode ? "https://automationalien.s3.us-east-1.amazonaws.com/VoiceLoopLogoBlack.png" : "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png"}
-              alt="TeamLoop Logo"
-              style={{ height: '72px', width: 'auto' }}
+              alt="VoiceLoop Logo"
+              style={{ 
+                height: '60px',
+                width: 'auto',
+                flexShrink: 0,
+                filter: isDarkMode ? 'invert(1)' : 'none'
+              }}
             />
             {isGuest && (
               <span style={{
                 padding: '6px 12px',
-                backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                color: '#fde047',
-                borderRadius: '20px',
+                backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)',
+                color: isDarkMode ? '#fde047' : '#d97706',
+                borderRadius: '16px',
                 fontSize: '14px',
-                border: '1px solid rgba(245, 158, 11, 0.3)'
+                fontWeight: '500',
+                border: `1px solid ${isDarkMode ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.25)'}`,
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}>
                 🎭 Guest Mode
               </span>
             )}
           </div>
-          
+
+                     {/* Centered Volume Control */}
+           <div style={{
+             display: 'flex',
+             alignItems: 'center',
+             gap: '12px',
+             backgroundColor: ui.controlBg,
+             padding: '8px 16px',
+             borderRadius: '24px',
+             border: `1px solid ${ui.controlBorder}`,
+             backdropFilter: 'blur(10px)',
+             minWidth: '200px',
+             justifyContent: 'center'
+           }}>
+             <span style={{ 
+               color: ui.textPrimary, 
+               fontSize: '16px',
+               opacity: volume > 0 ? 1 : 0.5,
+               transition: 'opacity 0.2s ease'
+             }}>
+               {volume === 0 ? '🔇' : volume < 0.5 ? '🔉' : '🔊'}
+             </span>
+             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+               <input
+                 type="range"
+                 min="0"
+                 max="1"
+                 step="0.01"
+                 value={volume}
+                 onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                 onInput={(e) => handleVolumeChange(parseFloat(e.currentTarget.value))}
+                 onMouseDown={(e) => {
+                   // Add visual feedback when dragging starts
+                   e.currentTarget.style.transform = 'scale(1.05)'
+                 }}
+                 onMouseUp={(e) => {
+                   // Reset visual feedback when dragging ends
+                   e.currentTarget.style.transform = 'scale(1)'
+                 }}
+                 style={{
+                   width: '160px',
+                   height: '8px',
+                   backgroundColor: 'transparent',
+                   borderRadius: '8px',
+                   outline: 'none',
+                   cursor: 'pointer',
+                   transition: 'transform 0.1s ease',
+                   WebkitAppearance: 'none',
+                   appearance: 'none',
+                   zIndex: 2,
+                   position: 'relative'
+                 }}
+                 title={`Volume: ${Math.round(volume * 100)}%`}
+               />
+               {/* Volume level indicator overlay */}
+               <div style={{
+                 position: 'absolute',
+                 left: 0,
+                 top: '50%',
+                 transform: 'translateY(-50%)',
+                 height: '8px',
+                 width: `${volume * 100}%`,
+                 backgroundColor: isDarkMode ? '#60a5fa' : '#3b82f6',
+                 borderRadius: '8px',
+                 transition: 'width 0.05s ease',
+                 pointerEvents: 'none',
+                 zIndex: 1
+               }} />
+             </div>
+             <span style={{ 
+               color: ui.textPrimary, 
+               fontSize: '12px', 
+               fontWeight: '500',
+               minWidth: '35px',
+               textAlign: 'center',
+               opacity: volume > 0 ? 1 : 0.7,
+               transition: 'opacity 0.2s ease'
+             }}>
+               {Math.round(volume * 100)}%
+             </span>
+           </div>
+
+          {/* Right Side Controls */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1702,38 +1817,38 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
             {/* tiny live state indicator */}
             {isCandidateResourcesOpen && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#22d3ee' }} />}
             
-            {/* Volume Control */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              backgroundColor: ui.controlBg,
-              padding: '8px 12px',
-              borderRadius: '20px',
-              border: `1px solid ${ui.controlBorder}`,
-              backdropFilter: 'blur(10px)'
-            }}>
-              <span style={{ color: ui.textPrimary, fontSize: '14px' }}>🔊</span>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={volume}
-                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                style={{
-                  width: '64px',
-                  height: '4px',
-                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(15,23,42,0.25)',
-                  borderRadius: '4px',
-                  outline: 'none'
-                }}
-                title={`Volume: ${Math.round(volume * 100)}%`}
-              />
-            </div>
-            {/* Color controls moved to Settings */}
+            {/* Single Person (Candidate Profile) */}
+            <button
+              onClick={handleOpenCandidateProfile}
+              aria-label="Candidate Profile"
+              title="Candidate Profile"
+              style={{
+                borderRadius: '50%',
+                padding: '8px',
+                backgroundColor: ui.controlBg,
+                border: `1px solid ${ui.controlBorder}`,
+                color: ui.textPrimary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                cursor: 'pointer'
+              }}
+            >
+              <User size={16} />
+            </button>
+
             {/* Audio controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, backgroundColor: ui.controlBg, padding: '6px 8px', borderRadius: 20, border: `1px solid ${ui.controlBorder}` }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 6, 
+              backgroundColor: ui.controlBg, 
+              padding: '6px 8px', 
+              borderRadius: 20, 
+              border: `1px solid ${ui.controlBorder}` 
+            }}>
               <button onClick={() => voiceSynthesizer?.rewindSeconds(10)} style={{ background: 'transparent', border: 'none', color: ui.textPrimary, cursor: 'pointer' }} title="Rewind 10s">⏪</button>
               <button onClick={() => voiceSynthesizer?.togglePause()} style={{ background: 'transparent', border: 'none', color: ui.textPrimary, cursor: 'pointer' }} title="Play/Pause">{isSpeaking ? '⏸' : '▶️'}</button>
               <button onClick={() => voiceSynthesizer?.fastForwardSeconds(10)} style={{ background: 'transparent', border: 'none', color: ui.textPrimary, cursor: 'pointer' }} title="Forward 10s">⏩</button>
@@ -2102,6 +2217,9 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         onClose={() => setIsSettingsOpen(false)}
         isDarkMode={isDarkMode}
         onSettingsSaved={loadUserSettings}
+        onToggleTheme={onToggleTheme}
+        volume={volume}
+        onVolumeChange={handleVolumeChange}
       />
 
       {/* Calendar Window */}
@@ -2125,23 +2243,101 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         isDarkMode={isDarkMode}
       />
 
-      <style jsx>{`
-        @keyframes bounce {
-          0%, 80%, 100% {
-            transform: scale(0);
-          }
-          40% {
-            transform: scale(1);
-          }
-        }
-        
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+      {/* Candidate Profile Panel */}
+      <CandidateProfilePanel
+        isOpen={isCandidateProfileOpen}
+        onClose={() => setIsCandidateProfileOpen(false)}
+        isDarkMode={isDarkMode}
+        userId={user?.id}
+      />
+
+             <style jsx>{`
+         @keyframes bounce {
+           0%, 80%, 100% {
+             transform: scale(0);
+           }
+           40% {
+             transform: scale(1);
+           }
+         }
+         
+         @keyframes spin {
+           0% { transform: rotate(0deg); }
+           100% { transform: rotate(360deg); }
+         }
+         .no-scrollbar::-webkit-scrollbar { display: none; }
+         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+         
+         /* Custom Volume Slider Styling */
+         input[type="range"] {
+           -webkit-appearance: none;
+           appearance: none;
+           background: transparent;
+           cursor: pointer;
+         }
+         
+         input[type="range"]::-webkit-slider-track {
+           width: 100%;
+           height: 8px;
+           cursor: pointer;
+           background: ${isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(15,23,42,0.15)'};
+           border-radius: 8px;
+           border: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(15,23,42,0.25)'};
+         }
+         
+         input[type="range"]::-webkit-slider-thumb {
+           -webkit-appearance: none;
+           appearance: none;
+           height: 20px;
+           width: 20px;
+           border-radius: 50%;
+           background: ${isDarkMode ? '#ffffff' : '#3b82f6'};
+           cursor: pointer;
+           border: 2px solid ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(59,130,246,0.3)'};
+           box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+           transition: all 0.1s ease;
+         }
+         
+         input[type="range"]::-webkit-slider-thumb:hover {
+           transform: scale(1.1);
+           box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+         }
+         
+         input[type="range"]::-webkit-slider-thumb:active {
+           transform: scale(1.15);
+           box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+         }
+         
+         input[type="range"]::-moz-range-track {
+           width: 100%;
+           height: 8px;
+           cursor: pointer;
+           background: ${isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(15,23,42,0.15)'};
+           border-radius: 8px;
+           border: 1px solid ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(15,23,42,0.25)'};
+         }
+         
+         input[type="range"]::-moz-range-thumb {
+           height: 20px;
+           width: 20px;
+           border-radius: 50%;
+           background: ${isDarkMode ? '#ffffff' : '#3b82f6'};
+           cursor: pointer;
+           border: 2px solid ${isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(59,130,246,0.3)'};
+           box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+           transition: all 0.1s ease;
+         }
+         
+         input[type="range"]::-moz-range-thumb:hover {
+           transform: scale(1.1);
+           box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+         }
+         
+         input[type="range"]::-moz-range-thumb:active {
+           transform: scale(1.15);
+           box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+         }
+       `}</style>
     </div>
   )
 }

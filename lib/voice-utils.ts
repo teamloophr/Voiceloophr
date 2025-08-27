@@ -58,8 +58,35 @@ export class VoiceRecognition {
     }
 
     try {
-      // Request microphone permission
-      await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Request microphone permission with better error handling for mobile
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        })
+      } catch (permissionError: any) {
+        console.error("[v0] Microphone permission error:", permissionError)
+        
+        // Provide specific error messages for common mobile permission issues
+        if (permissionError.name === 'NotAllowedError') {
+          onError("Microphone access denied. Please allow microphone permissions in your browser settings and try again.")
+        } else if (permissionError.name === 'NotFoundError') {
+          onError("No microphone found. Please connect a microphone and try again.")
+        } else if (permissionError.name === 'NotReadableError') {
+          onError("Microphone is in use by another application. Please close other apps using the microphone and try again.")
+        } else if (permissionError.name === 'OverconstrainedError') {
+          onError("Microphone doesn't meet requirements. Please try a different microphone or browser.")
+        } else if (permissionError.name === 'SecurityError') {
+          onError("Microphone access blocked for security reasons. Please check your browser's security settings.")
+        } else {
+          onError(`Microphone access error: ${permissionError.message || 'Unknown error'}`)
+        }
+        return
+      }
 
       // Configure recognition
       this.recognition.continuous = options.continuous ?? true
@@ -89,7 +116,36 @@ export class VoiceRecognition {
       this.recognition.onerror = (event: any) => {
         this.isListening = false
         console.error("[v0] Voice recognition error:", event.error)
-        onError(`Speech recognition error: ${event.error}`)
+        
+        // Provide specific error messages for common speech recognition errors
+        let errorMessage = "Speech recognition error"
+        switch (event.error) {
+          case 'no-speech':
+            errorMessage = "No speech detected. Please speak clearly and try again."
+            break
+          case 'audio-capture':
+            errorMessage = "Audio capture error. Please check your microphone and try again."
+            break
+          case 'not-allowed':
+            errorMessage = "Speech recognition not allowed. Please check your browser permissions."
+            break
+          case 'network':
+            errorMessage = "Network error. Please check your internet connection and try again."
+            break
+          case 'service-not-allowed':
+            errorMessage = "Speech recognition service not allowed. Please check your browser settings."
+            break
+          case 'bad-grammar':
+            errorMessage = "Grammar error in speech recognition. Please try again."
+            break
+          case 'language-not-supported':
+            errorMessage = "Language not supported. Please try using English."
+            break
+          default:
+            errorMessage = `Speech recognition error: ${event.error}`
+        }
+        
+        onError(errorMessage)
       }
 
       this.recognition.onend = () => {
@@ -425,7 +481,20 @@ export class VoiceSynthesizer {
   }
 
   setVolume(volume: number) {
+    console.log(`[VoiceSynthesizer] Setting volume to: ${volume}`)
     this.volume = Math.max(0, Math.min(1, volume)) // Clamp between 0 and 1
+    
+    // Update volume of currently playing speech
+    if (this.currentVoice === "browser" && this.currentUtterance && window.speechSynthesis) {
+      console.log(`[VoiceSynthesizer] Updating current utterance volume to: ${this.volume}`)
+      this.currentUtterance.volume = this.volume
+    }
+    
+    // Update volume of ElevenLabs audio if playing
+    if (this.currentVoice !== "browser" && this.currentAudio) {
+      console.log(`[VoiceSynthesizer] Updating ElevenLabs audio volume to: ${this.volume}`)
+      this.currentAudio.volume = this.volume
+    }
   }
 
   getVolume(): number {
@@ -536,6 +605,9 @@ export class VoiceSynthesizer {
         utterance.volume = this.volume
         utterance.rate = this.rate
         utterance.pitch = 1.0
+        
+        // Debug logging for volume
+        console.log(`[VoiceSynthesizer] Setting utterance volume to: ${this.volume}`)
 
         const voices = window.speechSynthesis.getVoices()
         if (voices.length > 0) {

@@ -42,7 +42,7 @@ export class FileProcessor {
   private static async extractFromPDF(file: File): Promise<ExtractedText> {
     // For now, we'll use a simple approach
     // In production, you'd want to use pdf-parse or similar
-    const arrayBuffer = await file.arrayBuffer()
+    await file.arrayBuffer()
     const text = `[PDF Content from ${file.name}]\n\nThis is a placeholder for PDF text extraction. In production, implement proper PDF parsing using libraries like pdf-parse.`
     
     return {
@@ -88,7 +88,7 @@ export class FileProcessor {
 
   // Validate file type and size
   static validateFile(file: File): { isValid: boolean; error?: string } {
-    const maxSize = 10 * 1024 * 1024 // 10MB
+    const maxSize = 50 * 1024 * 1024 // 50MB
     const allowedTypes = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -98,11 +98,14 @@ export class FileProcessor {
       'audio/wav',
       'audio/mpeg',
       'audio/mp4',
-      'audio/x-m4a'
+      'audio/x-m4a',
+      'audio/webm',
+      'video/mp4',
+      'video/webm'
     ]
 
     if (file.size > maxSize) {
-      return { isValid: false, error: 'File size exceeds 10MB limit' }
+      return { isValid: false, error: 'File size exceeds 50MB limit' }
     }
 
     // Check both MIME type and file extension for better compatibility
@@ -114,13 +117,54 @@ export class FileProcessor {
                              fileName.endsWith('.csv') ||
                              fileName.endsWith('.wav') ||
                              fileName.endsWith('.mp3') ||
-                             fileName.endsWith('.m4a')
+                             fileName.endsWith('.m4a') ||
+                             fileName.endsWith('.webm') ||
+                             fileName.endsWith('.mp4')
 
     if (!allowedTypes.includes(file.type) && !hasValidExtension) {
       return { isValid: false, error: 'File type not supported. Please upload PDF, Word, text, CSV, or audio files (WAV, MP3, M4A).' }
     }
 
     return { isValid: true }
+  }
+
+  // Placeholder antivirus scan hook (sync). Replace with real AV callout if available.
+  static async virusScanIfEnabled(_file: File): Promise<{ clean: boolean; reason?: string }> {
+    try {
+      return { clean: true }
+    } catch (e) {
+      return { clean: true }
+    }
+  }
+
+  // Simple chunker: sentence-aware-ish by splitting on double newlines, then size limit
+  static chunkText(content: string, maxChars = 1200): Array<{ index: number; content: string }> {
+    const chunks: Array<{ index: number; content: string }> = []
+    if (!content) return chunks
+    let buffer = ''
+    const push = () => {
+      if (!buffer.trim()) return
+      chunks.push({ index: chunks.length, content: buffer.trim() })
+      buffer = ''
+    }
+    const parts = content.split(/\n\n+/)
+    for (const part of parts) {
+      if (buffer.length + part.length + 2 <= maxChars) {
+        buffer += (buffer ? '\n\n' : '') + part
+      } else {
+        if (buffer) push()
+        if (part.length <= maxChars) {
+          buffer = part
+        } else {
+          for (let i = 0; i < part.length; i += maxChars) {
+            chunks.push({ index: chunks.length, content: part.slice(i, i + maxChars) })
+          }
+          buffer = ''
+        }
+      }
+    }
+    if (buffer) push()
+    return chunks
   }
 
   // Get file information

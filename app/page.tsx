@@ -1,14 +1,18 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
 import { WaveAnimation } from "@/components/ui/wave-animation-background"
-import { AuthContainer } from "@/components/auth/auth-container"
 import { AuthProvider } from "@/contexts/auth-context"
 
 export default function Page() {
   const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Set theme data attribute for CSS variables
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light')
+  }, [isDarkMode])
 
   const toggleTheme = () => {
     setIsDarkMode(!isDarkMode)
@@ -17,6 +21,7 @@ export default function Page() {
   return (
     <AuthProvider>
       <div className="relative w-full h-screen overflow-hidden">
+        {/* Background Wave Animation */}
         <div className="absolute inset-0 z-0">
           <WaveAnimation
             waveSpeed={2}
@@ -28,13 +33,13 @@ export default function Page() {
           />
         </div>
 
+        {/* Glass Overlay */}
         <div className={`absolute inset-0 z-10 ${isDarkMode ? "bg-black/10" : "bg-white/10"} backdrop-blur-[0.5px]`} />
 
+        {/* Main Content */}
         <div className="relative z-20 w-full h-full">
           <EnhancedChatInterface isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
         </div>
-
-        {/* AuthContainer is shown via AuthModal from navbar */}
       </div>
     </AuthProvider>
   )

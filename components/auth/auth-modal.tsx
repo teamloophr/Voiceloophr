@@ -1,10 +1,8 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { createPortal } from "react-dom"
+import React, { useState, useRef, useEffect } from "react"
+import { X, Mail, Lock, Eye, EyeOff, User, LogIn, UserPlus, UserCheck } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { LoginForm } from "@/components/auth/login-form"
-import { SignUpForm } from "@/components/auth/signup-form"
 
 interface AuthModalProps {
   isOpen: boolean
@@ -19,6 +17,12 @@ export function AuthModal({ isOpen, onClose, isDarkMode }: AuthModalProps) {
   const dragOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const { signIn, signUp, signInAsGuest } = useAuth()
   const [mode, setMode] = useState<"signin" | "signup">("signin")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   // Debug logging
   console.log('AuthModal rendering:', { isOpen, mode, isDarkMode })
@@ -42,8 +46,8 @@ export function AuthModal({ isOpen, onClose, isDarkMode }: AuthModalProps) {
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(0,0,0,0.8)',
-        backdropFilter: 'blur(10px)',
+        background: isDarkMode ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)',
+        backdropFilter: 'blur(12px)',
         zIndex: 2147483647,
         pointerEvents: 'auto',
         display: 'flex',
@@ -56,15 +60,15 @@ export function AuthModal({ isOpen, onClose, isDarkMode }: AuthModalProps) {
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '400px',
-          margin: '0 16px',
-          background: isDarkMode ? '#1f2937' : '#ffffff',
-          borderRadius: '12px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+          maxWidth: '480px',
+          margin: '0 20px',
+          background: isDarkMode ? '#000000' : '#ffffff',
+          borderRadius: '20px',
+          boxShadow: isDarkMode ? '0 25px 50px -12px rgba(0, 0, 0, 0.8)' : '0 25px 50px -12px rgba(0, 0, 0, 0.2)',
           position: 'relative',
           left: pos.x,
           top: pos.y,
-          border: '2px solid rgba(0,0,0,0.2)',
+          border: isDarkMode ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(15,23,42,0.08)',
           maxHeight: '90vh',
           overflow: 'auto',
           zIndex: 2147483647,
@@ -78,8 +82,8 @@ export function AuthModal({ isOpen, onClose, isDarkMode }: AuthModalProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '16px',
-            borderBottom: '1px solid rgba(0,0,0,0.1)',
+            padding: '24px 32px 20px 32px',
+            borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(15,23,42,0.06)',
             cursor: 'move'
           }}
           onMouseDown={(e) => {
@@ -100,238 +104,388 @@ export function AuthModal({ isOpen, onClose, isDarkMode }: AuthModalProps) {
             window.addEventListener('mouseup', onUp)
           }}
         >
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: isDarkMode ? '#e5e7eb' : '#111827'
+          {/* Logo and Title */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px'
           }}>
-            {mode === 'signin' ? 'Sign in' : 'Create account'}
-            <button
-              onClick={() => {
-                const authText = `${mode === 'signin' ? 'Sign in' : 'Create account'} form. ${mode === 'signin' ? 'Enter your email and password to sign in to VoiceLoopHR.' : 'Enter your details to create a new VoiceLoopHR account.'}`
-                if ('speechSynthesis' in window) {
-                  const utterance = new SpeechSynthesisUtterance(authText)
-                  utterance.rate = 1.0
-                  utterance.pitch = 1.0
-                  utterance.volume = 1.0
-                  speechSynthesis.speak(utterance)
-                }
+            <img
+              src={isDarkMode ? "https://automationalien.s3.us-east-1.amazonaws.com/VoiceLoopLogoBlack.png" : "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png"}
+              alt="VoiceLoop Logo"
+              style={{ 
+                height: '40px',
+                width: 'auto',
+                filter: isDarkMode ? 'invert(1)' : 'none'
               }}
-              style={{
-                padding: '6px',
-                borderRadius: '50%',
-                border: '1px solid rgba(0,0,0,0.1)',
-                background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)',
-                cursor: 'pointer',
-                fontSize: '12px',
-                color: isDarkMode ? '#e5e7eb' : '#6b7280',
-                transition: 'all 0.2s ease',
-                width: '24px',
-                height: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginLeft: '12px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.08)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)'
-              }}
-              title="Read form aloud"
-              aria-label="Read form aloud"
-            >
-              🔊
-            </button>
-          </h3>
+            />
+            <div>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: 600,
+                color: isDarkMode ? '#ffffff' : '#0f172a',
+                margin: 0,
+                letterSpacing: '-0.025em'
+              }}>
+                VoiceLoop
+              </h2>
+              <p style={{
+                fontSize: '0.875rem',
+                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.6)',
+                margin: 0,
+                fontWeight: 400
+              }}>
+                HR Assistant
+              </p>
+            </div>
+          </div>
+
+          {/* Close Button */}
           <button
             onClick={onClose}
             style={{
-              padding: '8px',
-              borderRadius: '6px',
-              border: '1px solid rgba(0,0,0,0.1)',
-              background: 'rgba(0,0,0,0.04)',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              border: 'none',
+              background: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.06)',
+              color: isDarkMode ? '#ffffff' : '#0f172a',
               cursor: 'pointer',
-              fontSize: '14px',
-              color: isDarkMode ? '#9ca3af' : '#6b7280'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease'
             }}
-            aria-label="Close"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.08)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.06)'
+            }}
           >
-            ✕
+            <X size={18} />
           </button>
         </div>
 
         {/* Content */}
-        <div style={{ padding: '16px' }}>
-          {/* Logo */}
+        <div style={{ padding: '32px' }}>
+          {/* Mode Toggle */}
           <div style={{
             display: 'flex',
-            justifyContent: 'center',
+            background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.04)',
+            borderRadius: '12px',
+            padding: '4px',
             marginBottom: '24px'
           }}>
-            <img 
-              src={isDarkMode ? 
-                "https://automationalien.s3.us-east-1.amazonaws.com/VoiceLoopLogoBlack.png" : 
-                "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png"
-              } 
-              alt="VoiceLoopHR" 
-              style={{ height: '48px' }}
-            />
-          </div>
-
-          {/* Guest Sign-in Option - Prominent for Development */}
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '20px',
-            background: isDarkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-            border: `2px solid ${isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)'}`,
-            borderRadius: '12px',
-            marginBottom: '20px'
-          }}>
-            <h4 style={{
-              fontSize: '20px',
-              fontWeight: '600',
-              marginBottom: '12px',
-              color: isDarkMode ? '#22c55e' : '#16a34a'
-            }}>
-              🎭 Development Mode
-            </h4>
-            <p style={{
-              fontSize: '14px',
-              color: isDarkMode ? '#9ca3af' : '#6b7280',
-              marginBottom: '16px'
-            }}>
-              Skip authentication and test the app immediately
-            </p>
-            <button 
-              onClick={signInAsGuest}
+            <button
+              onClick={() => setMode("signin")}
               style={{
-                padding: '14px 24px',
-                background: isDarkMode ? '#22c55e' : '#16a34a',
-                color: 'white',
+                flex: 1,
+                padding: '12px 16px',
                 borderRadius: '8px',
                 border: 'none',
-                fontSize: '16px',
-                fontWeight: '600',
+                background: mode === "signin" ? (isDarkMode ? '#60a5fa' : '#3b82f6') : 'transparent',
+                color: mode === "signin" ? '#ffffff' : (isDarkMode ? '#ffffff' : '#0f172a'),
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDarkMode ? '#16a34a' : '#15803d'
-                e.currentTarget.style.transform = 'translateY(-2px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = isDarkMode ? '#22c55e' : '#16a34a'
-                e.currentTarget.style.transform = 'translateY(0)'
+                fontSize: '0.9375rem',
+                fontWeight: 500,
+                transition: 'all 0.2s ease'
               }}
             >
-              🚀 Sign in as Guest
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <LogIn size={16} />
+                Sign In
+              </div>
+            </button>
+            <button
+              onClick={() => setMode("signup")}
+              style={{
+                flex: 1,
+                padding: '12px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: mode === "signup" ? (isDarkMode ? '#60a5fa' : '#3b82f6') : 'transparent',
+                color: mode === "signup" ? '#ffffff' : (isDarkMode ? '#ffffff' : '#0f172a'),
+                cursor: 'pointer',
+                fontSize: '0.9375rem',
+                fontWeight: 500,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <UserPlus size={16} />
+                Sign Up
+              </div>
             </button>
           </div>
 
-          {/* Regular Authentication Forms */}
-          <div style={{ 
-            textAlign: 'center',
-            padding: '16px',
-            border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-            borderRadius: '8px',
-            background: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
+          {/* Form */}
+          <form onSubmit={async (e) => {
+            e.preventDefault()
+            setIsLoading(true)
+            setError(null)
+            setSuccess(null)
+
+            try {
+              if (mode === "signin") {
+                await signIn(email, password)
+                setSuccess("Successfully signed in!")
+                setTimeout(() => onClose(), 1000)
+              } else {
+                await signUp(email, password)
+                setSuccess("Account created successfully!")
+                setTimeout(() => onClose(), 1000)
+              }
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'An error occurred')
+            } finally {
+              setIsLoading(false)
+            }
           }}>
-            <h4 style={{
-              fontSize: '16px',
-              fontWeight: '500',
-              marginBottom: '12px',
-              color: isDarkMode ? '#e5e7eb' : '#111827'
-            }}>
-              {mode === 'signin' ? 'Sign In' : 'Create Account'}
-            </h4>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input 
-                type="email" 
-                placeholder="Email" 
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid rgba(0,0,0,0.2)',
-                  borderRadius: '8px',
-                  background: isDarkMode ? '#374151' : '#ffffff',
-                  color: isDarkMode ? '#e5e7eb' : '#111827',
-                  fontSize: '14px'
-                }}
-              />
-              <input 
-                type="password" 
-                placeholder="Password" 
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid rgba(0,0,0,0.2)',
-                  borderRadius: '8px',
-                  background: isDarkMode ? '#374151' : '#ffffff',
-                  color: isDarkMode ? '#e5e7eb' : '#111827',
-                  fontSize: '14px'
-                }}
-              />
-              <button style={{
-                width: '100%',
-                padding: '12px',
-                background: '#2563eb',
-                color: 'white',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer'
+            {/* Email Input */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                color: isDarkMode ? '#ffffff' : '#0f172a',
+                marginBottom: '8px'
               }}>
-                {mode === 'signin' ? 'Sign In' : 'Sign Up'}
-              </button>
+                Email
+              </label>
+              <div style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <Mail size={18} style={{
+                  position: 'absolute',
+                  left: '16px',
+                  color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(15,23,42,0.5)'
+                }} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px 14px 48px',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.08)'}`,
+                    borderRadius: '12px',
+                    background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.04)',
+                    color: isDarkMode ? '#ffffff' : '#0f172a',
+                    fontSize: '0.9375rem',
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                  placeholder="Enter your email"
+                />
+              </div>
             </div>
-            
-            <div style={{ textAlign: 'center' }}>
-              <button 
-                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+
+            {/* Password Input */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                color: isDarkMode ? '#ffffff' : '#0f172a',
+                marginBottom: '8px'
+              }}>
+                Password
+              </label>
+              <div style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <Lock size={18} style={{
+                  position: 'absolute',
+                  left: '16px',
+                  color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(15,23,42,0.5)'
+                }} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px 14px 48px',
+                    border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.08)'}`,
+                    borderRadius: '12px',
+                    background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.04)',
+                    color: isDarkMode ? '#ffffff' : '#0f172a',
+                    fontSize: '0.9375rem',
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(15,23,42,0.5)',
+                    cursor: 'pointer',
+                    padding: '4px'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Error/Success Messages */}
+            {error && (
+              <div style={{
+                padding: '12px 16px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: '8px',
+                color: '#dc2626',
+                fontSize: '0.875rem',
+                marginBottom: '20px'
+              }}>
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div style={{
+                padding: '12px 16px',
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                borderRadius: '8px',
+                color: '#059669',
+                fontSize: '0.875rem',
+                marginBottom: '20px'
+              }}>
+                {success}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              style={{
+                width: '100%',
+                padding: '14px 24px',
+                background: isDarkMode ? '#60a5fa' : '#3b82f6',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: isLoading ? 0.6 : 1,
+                transition: 'all 0.2s ease',
+                marginBottom: '20px'
+              }}
+              onMouseEnter={(e) => {
+                if (!isLoading) {
+                  e.currentTarget.style.background = isDarkMode ? '#3b82f6' : '#2563eb'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isLoading) {
+                  e.currentTarget.style.background = isDarkMode ? '#60a5fa' : '#3b82f6'
+                }
+              }}
+            >
+              {isLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderTop: '2px solid #ffffff',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                  {mode === "signin" ? "Signing In..." : "Creating Account..."}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  {mode === "signin" ? <LogIn size={18} /> : <UserPlus size={18} />}
+                  {mode === "signin" ? "Sign In" : "Create Account"}
+                </div>
+              )}
+            </button>
+
+            {/* Guest Sign In */}
+            <div style={{
+              textAlign: 'center',
+              padding: '20px 0',
+              borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.06)'}`
+            }}>
+              <p style={{
+                fontSize: '0.875rem',
+                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(15,23,42,0.6)',
+                margin: '0 0 16px 0'
+              }}>
+                Or continue as a guest
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsLoading(true)
+                  try {
+                    await signInAsGuest()
+                    setSuccess("Signed in as guest!")
+                    setTimeout(() => onClose(), 1000)
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Failed to sign in as guest')
+                  } finally {
+                    setIsLoading(false)
+                  }
+                }}
+                disabled={isLoading}
                 style={{
-                  color: '#2563eb',
-                  fontSize: '14px',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
+                  padding: '12px 24px',
+                  background: 'transparent',
+                  color: isDarkMode ? '#60a5fa' : '#3b82f6',
+                  border: `1px solid ${isDarkMode ? '#60a5fa' : '#3b82f6'}`,
+                  borderRadius: '12px',
+                  fontSize: '0.9375rem',
+                  fontWeight: 500,
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  opacity: isLoading ? 0.6 : 1,
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  margin: '0 auto'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.background = isDarkMode ? 'rgba(96, 165, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.background = 'transparent'
+                  }
                 }}
               >
-                {mode === 'signin' ? 'Need an account? Sign up' : 'Have an account? Sign in'}
+                <UserCheck size={16} />
+                Continue as Guest
               </button>
             </div>
-          </div>
-
-          {/* Original Forms - Commented out for testing */}
-          {/*
-          {mode === 'signin' ? (
-            <LoginForm 
-              isDarkMode={isDarkMode} 
-              onSwitchToSignUp={() => setMode('signup')} 
-            />
-          ) : (
-            <SignUpForm 
-              isDarkMode={isDarkMode} 
-              onSwitchToLogin={() => setMode('signin')} 
-            />
-          )}
-          */}
+          </form>
         </div>
       </div>
     </div>
   )
 
-  if (typeof document !== 'undefined') {
-    return createPortal(modal, document.body)
-  }
   return modal
 }
-
-export default AuthModal
 
 

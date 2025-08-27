@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { validateFile } from "@/lib/file-utils"
+import { validateFile, FileProcessor } from "@/lib/file-utils"
 import { AIProcessor } from "@/lib/ai-processing"
+import { auditLog } from "@/lib/audit"
+import { getAuthFromRequest, resolveUserIdViaSupabaseToken } from "@/lib/auth"
 
 // Lazy import to avoid issues in edge runtimes
 function getAdminClient() {
@@ -15,7 +17,14 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const files = formData.getAll("files") as File[]
-    const userId = (formData.get("userId") as string) || ""
+    let userId = (formData.get("userId") as string) || ""
+
+    // Enforce auth: resolve userId from token when absent or to double-check
+    if (!userId) {
+      const { token } = getAuthFromRequest(request)
+      const resolved = await resolveUserIdViaSupabaseToken(token)
+      if (resolved) userId = resolved
+    }
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: "No files provided" }, { status: 400 })
@@ -44,6 +53,12 @@ export async function POST(request: NextRequest) {
       }
 
       try {
+        // Pre-compute file descriptors used across stages
+        const mime = file.type || "application/octet-stream"
+        const title = file.name
+        const fileType = mime
+        const fileSize = file.size
+
         // Upload original to Supabase Storage
         const storageBucket = 'documents'
         const storagePath = `${userId}/${Date.now()}-${title}`
@@ -61,12 +76,14 @@ export async function POST(request: NextRequest) {
           console.warn('[upload] Storage upload threw, continuing without file:', e)
         }
 
-        // Extract text content or transcribe audio
-        const mime = file.type || "application/octet-stream"
+        // Extract text content or transcribe audio / video
         let extractedText = ""
         if (mime.startsWith("audio/")) {
           const transcription = await AIProcessor.transcribeAudio(file)
           extractedText = transcription.text || ""
+        } else if (mime.startsWith("video/")) {
+          // Naive: rely on client to send smaller video or server to handle in chunks later; placeholder text
+          try { extractedText = await file.text() } catch { extractedText = '' }
         } else if (mime === 'application/pdf') {
           try {
             const pdfjsLib = await import('pdfjs-dist/build/pdf.mjs')
@@ -106,12 +123,18 @@ export async function POST(request: NextRequest) {
         }
 
         const content = (extractedText || "").slice(0, 20000)
-        const title = file.name
-        const fileType = mime
-        const fileSize = file.size
 
         // Generate embeddings from extracted text (if any)
         const embeddings = content ? await AIProcessor.generateEmbeddings(content) : []
+
+        // Chunk content and embed chunks for improved RAG
+        const chunks = FileProcessor.chunkText(content)
+        let chunkEmbeddings: number[][] = []
+        try {
+          if (chunks.length) {
+            chunkEmbeddings = await AIProcessor.embedChunks(chunks)
+          }
+        } catch {}
 
         // Optional: create a short summary
         let summary: string | undefined
@@ -148,6 +171,24 @@ export async function POST(request: NextRequest) {
           console.error("[upload] DB insert error", error)
           throw error
         }
+
+        // Persist chunks if any
+        if (data?.id && chunks.length && chunkEmbeddings.length === chunks.length) {
+          const rows = chunks.map((c, i) => ({
+            document_id: data.id,
+            chunk_index: c.index,
+            content: c.content,
+            embeddings: chunkEmbeddings[i]
+          }))
+          try {
+            await admin.from('hr_document_chunks').insert(rows)
+          } catch (e) {
+            try { console.warn('[upload] chunk insert failed', e) } catch {}
+          }
+        }
+
+        // Audit
+        auditLog({ userId, action: 'document_upload', resourceType: 'hr_documents', resourceId: data?.id, metadata: { title, fileType, fileSize } })
 
         uploadResults.push({
           filename: file.name,

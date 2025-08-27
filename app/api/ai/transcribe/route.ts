@@ -41,22 +41,43 @@ export async function POST(req: NextRequest) {
 
     console.log('[transcribe] Processing file:', file.name, 'size:', file.size, 'type:', file.type)
 
-    // Streams are not supported directly by openai sdk in edge; use file
+    // If file is large (> 20MB), split into chunks client-side is ideal; here we do a naive server chunking by slicing bytes
+    const maxChunkBytes = 20 * 1024 * 1024 // 20MB target per chunk
     const arrayBuffer = await file.arrayBuffer()
-    const blob = new Blob([arrayBuffer], { type: file.type || 'application/octet-stream' })
+    const raw = new Uint8Array(arrayBuffer)
 
-    console.log('[transcribe] Calling OpenAI Whisper API...')
-    const resp = await openai.audio.transcriptions.create({
-      file: new File([blob], file.name || 'audio.wav', { type: blob.type }),
-      model: 'whisper-1',
-      response_format: 'verbose_json'
-    })
+    const chunks: { start: number; end: number }[] = []
+    if (raw.byteLength <= maxChunkBytes) {
+      chunks.push({ start: 0, end: raw.byteLength })
+    } else {
+      for (let offset = 0; offset < raw.byteLength; offset += maxChunkBytes) {
+        chunks.push({ start: offset, end: Math.min(offset + maxChunkBytes, raw.byteLength) })
+      }
+    }
 
-    console.log('[transcribe] Transcription successful, text length:', resp.text?.length)
+    console.log(`[transcribe] Total size=${raw.byteLength}, chunks=${chunks.length}`)
+
+    const parts: string[] = []
+    for (let i = 0; i < chunks.length; i++) {
+      const { start, end } = chunks[i]
+      const slice = raw.slice(start, end)
+      const blob = new Blob([slice], { type: file.type || 'application/octet-stream' })
+      console.log(`[transcribe] Whisper chunk ${i + 1}/${chunks.length}, bytes=${slice.byteLength}`)
+      const resp = await openai.audio.transcriptions.create({
+        file: new File([blob], `${file.name || 'audio'}.part${i + 1}.wav`, { type: blob.type }),
+        model: 'whisper-1',
+        response_format: 'verbose_json'
+      })
+      parts.push(resp.text || '')
+    }
+
+    const fullText = parts.join('\n').trim()
+
+    console.log('[transcribe] Transcription successful, text length:', fullText.length)
     return NextResponse.json({
-      text: resp.text,
-      language: resp.language || 'en',
-      duration: (resp as any).duration || undefined
+      text: fullText,
+      language: 'en',
+      duration: undefined
     })
   } catch (err: any) {
     console.error('[api/ai/transcribe] error:', err)

@@ -120,6 +120,10 @@ export function VoiceRecorder({ onTranscriptComplete, onError }: VoiceRecorderPr
     )
   }
 
+  // Mobile permission help section
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  const showMobileHelp = isMobile && error && error.includes("denied")
+
   return (
     <Card className="border-gray-200">
       <CardHeader>
@@ -127,9 +131,35 @@ export function VoiceRecorder({ onTranscriptComplete, onError }: VoiceRecorderPr
           <Mic className="h-5 w-5 text-blue-600" />
           <span>Voice Recording</span>
         </CardTitle>
-        <CardDescription>Record your voice to convert speech to text</CardDescription>
+        <CardDescription>Click the microphone button to start recording</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Mobile Permission Help */}
+        {showMobileHelp && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <h4 className="font-medium text-yellow-800 mb-2">📱 Mobile Microphone Setup</h4>
+            <div className="text-sm text-yellow-700 space-y-2">
+              <p>To use voice recording on mobile devices:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Allow microphone access when prompted</li>
+                <li>Check your device settings: <strong>Settings → Privacy → Microphone</strong></li>
+                <li>Make sure VoiceLoop has microphone permissions</li>
+                <li>Refresh the page and try again</li>
+              </ol>
+              <p className="text-xs mt-2">
+                <strong>Note:</strong> Some mobile browsers require HTTPS for microphone access.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {error && !showMobileHelp && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p className="text-red-700 text-sm">{error}</p>
+          </div>
+        )}
+
         {/* Recording Controls */}
         <div className="flex items-center justify-center space-x-4">
           {!isListening ? (
@@ -184,13 +214,6 @@ export function VoiceRecorder({ onTranscriptComplete, onError }: VoiceRecorderPr
                 </Badge>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Error Display */}
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 

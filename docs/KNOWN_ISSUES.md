@@ -42,3 +42,4 @@ Re-run `scripts/08-security-audit-and-chunks.sql` in SQL Editor.
 
 ---
 Last updated: 2025-08-26
+
