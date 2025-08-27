@@ -41,6 +41,6 @@ export interface SearchResult {
     experienceLevel?: string
     location?: string
     department?: string
-    [key: string]: any
+    [key: string]: unknown
   }
 }

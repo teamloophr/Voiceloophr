@@ -11,3 +11,4 @@ Run in this order (idempotent):
 Notes:
 - Use Supabase SQL editor or CLI. These scripts add vector indexes, FTS, hybrid search RPCs, candidate tables, audit logs, and chunking.
 - Re-running is safe; IF NOT EXISTS is used where possible.
+

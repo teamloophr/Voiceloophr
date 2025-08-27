@@ -24,15 +24,42 @@ async function extractFromPDF(file: File) {
     
     console.log('[extractFromPDF] ArrayBuffer created, size:', arrayBuffer.byteLength)
     
-    // Try to extract text using a different approach
+    // Try structured extraction via pdfjs-dist first
     try {
-      console.log('[extractFromPDF] Attempting PDF text extraction...')
-      
-      // For now, let's try to use a basic text extraction approach
-      // This is a fallback that might work for some PDFs
+      console.log('[extractFromPDF] Attempting PDFJS text extraction...')
+      const pdfjsLib = await import('pdfjs-dist/build/pdf.mjs')
+      const loadingTask = (pdfjsLib as any).getDocument({ data: new Uint8Array(arrayBuffer) })
+      const pdf = await loadingTask.promise
+      let extracted = ''
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const content = await page.getTextContent()
+        const strings = (content.items || []).map((it: any) => it.str).filter(Boolean)
+        extracted += strings.join(' ') + '\n'
+        if (extracted.length > 80000) break
+      }
+      const extractedText = (extracted || '').trim()
+      if (extractedText.length > 100) {
+        console.log('[extractFromPDF] PDFJS extraction successful, length:', extractedText.length)
+        return {
+          text: extractedText,
+          metadata: {
+            pages: pdf.numPages,
+            wordCount: extractedText.split(/\s+/).length,
+            note: 'pdfjs-extraction'
+          }
+        }
+      }
+    } catch (pdfjsErr) {
+      console.warn('[extractFromPDF] PDFJS extraction failed, falling back:', pdfjsErr)
+    }
+
+    // Fallback: attempt raw file text + AI cleanup
+    try {
+      console.log('[extractFromPDF] Attempting raw text + AI cleanup...')
       const textContent = await file.text()
       if (textContent && textContent.trim().length > 0) {
-        console.log('[extractFromPDF] Raw text extracted, length:', textContent.length)
+        console.log('[extractFromPDF] Raw text available, length:', textContent.length)
         
         // Use OpenAI to intelligently parse and summarize the PDF content
         const openaiResponse = await fetch('/api/ai/query', {
@@ -152,39 +179,26 @@ ${textContent.substring(0, 8000)}${textContent.length > 8000 ? '\n\n[Content tru
         }
       }
       
-      // Final fallback: return informative file metadata
-      console.log('[extractFromPDF] All extraction methods failed, providing file metadata')
-      const metadataText = `This PDF document titled "${file.name}" was processed by our Human Resources document system. The file contains ${(file.size / 1024).toFixed(2)} kilobytes of data and was last modified on ${new Date(file.lastModified).toLocaleDateString()}. 
-
-Unfortunately, our text extraction system was unable to process this particular document effectively. This may be due to the document's format, security settings, or content structure.
-
-For better results with Human Resources documents, we recommend:
-- Using PDFs that contain selectable text rather than scanned images
-- Converting the document to a text format first
-- Using the document in a different format such as DOCX or TXT
-- Ensuring the document is not password-protected or encrypted`
-      
-      return { 
-        text: metadataText, 
-        metadata: { 
-          pages: undefined, 
-          wordCount: metadataText.split(/\s+/).length,
-          note: 'File metadata only - text extraction failed'
-        } 
+      // Final fallback: signal extraction failure without injecting generic text
+      console.log('[extractFromPDF] All extraction methods failed')
+      return {
+        text: '',
+        metadata: {
+          pages: undefined,
+          wordCount: 0,
+          note: 'extraction_failed'
+        }
       }
     } catch (extractionError) {
       console.error('[extractFromPDF] All extraction methods failed:', extractionError)
-      
-      // Final fallback: return basic file information
-      const text = `The PDF file "${file.name}" was processed successfully by our Human Resources document system. The file size is ${file.size} bytes. Content extraction was completed using our fallback method due to processing limitations.`
-      
-      return { 
-        text, 
-        metadata: { 
-          pages: undefined, 
-          wordCount: text.split(/\s+/).length,
-          note: 'Basic extraction due to processing error'
-        } 
+      // Signal failure instead of fabricating content
+      return {
+        text: '',
+        metadata: {
+          pages: undefined,
+          wordCount: 0,
+          note: 'extraction_failed'
+        }
       }
     }
   } catch (error) {

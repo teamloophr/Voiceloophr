@@ -1,7 +1,7 @@
 "use client"
 import type { Document } from "@/lib/types"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -41,8 +41,28 @@ const mockDocuments: Document[] = [
 ]
 
 export function DocumentList() {
-  const [documents] = useState<Document[]>(mockDocuments)
+  const [documents, setDocuments] = useState<Document[]>(mockDocuments)
   const [searchTerm, setSearchTerm] = useState("")
+
+  const handleDecision = useCallback(async (documentId: string, action: 'save' | 'delete') => {
+    try {
+      const resp = await fetch('/api/documents/decision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId, action })
+      })
+      // Optimistic update on success
+      if (resp.ok) {
+        if (action === 'delete') {
+          setDocuments(prev => prev.filter(d => d.id !== documentId))
+        } else if (action === 'save') {
+          setDocuments(prev => prev.map(d => d.id === documentId ? { ...d, status: 'completed' } as any : d))
+        }
+      }
+    } catch (e) {
+      console.error('[DocumentList] decision error:', e)
+    }
+  }, [])
 
   const filteredDocuments = documents.filter(
     (doc) =>
@@ -164,7 +184,10 @@ export function DocumentList() {
                   <Download className="h-4 w-4 mr-1" />
                   Download
                 </Button>
-                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 bg-transparent">
+                <Button size="sm" variant="outline" className="flex-1 bg-transparent" onClick={() => handleDecision(document.id, 'save')}>
+                  Save
+                </Button>
+                <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700 bg-transparent" onClick={() => handleDecision(document.id, 'delete')}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
