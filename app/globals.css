@@ -438,3 +438,71 @@ select:focus-visible {
 .border-thin-right {
   border-right: var(--color-border-thin);
 }
+
+/* Text Selection and Cursor Styles */
+* {
+  cursor: auto;
+}
+
+/* Ensure text is selectable by default */
+p, div, span, h1, h2, h3, h4, h5, h6, li, td, th, label, input[type="text"], input[type="textarea"], textarea {
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+/* Interactive elements should have pointer cursor */
+button, a, [role="button"], [tabindex], input[type="button"], input[type="submit"], input[type="reset"] {
+  cursor: pointer;
+}
+
+/* Disabled elements should show not-allowed cursor */
+button:disabled, input:disabled, [aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Form inputs should have text cursor */
+input[type="text"], input[type="email"], input[type="password"], input[type="search"], input[type="url"], input[type="tel"], textarea, select {
+  cursor: text;
+}
+
+/* Links should have pointer cursor */
+a, a:hover, a:focus {
+  cursor: pointer;
+}
+
+/* Remove any custom cursor styles that might interfere */
+* {
+  cursor: auto !important;
+}
+
+/* Ensure chat messages have proper text cursor */
+.chat-message, .message-bubble, [data-message] {
+  cursor: text !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Override with specific cursor types where needed */
+button, a, [role="button"] {
+  cursor: pointer !important;
+}
+
+input[type="text"], input[type="email"], input[type="password"], input[type="search"], input[type="url"], input[type="tel"], textarea, select, p, div, span, h1, h2, h3, h4, h5, h6, li, td, th, label {
+  cursor: text !important;
+}
+
+/* Ensure text selection works properly */
+::selection {
+  background-color: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+::-moz-selection {
+  background-color: var(--color-accent);
+  color: var(--color-text-inverse);
+}

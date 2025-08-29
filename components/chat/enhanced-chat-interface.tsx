@@ -70,9 +70,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
   const [isCandidateProfileOpen, setIsCandidateProfileOpen] = useState(false)
   const [volume, setVolume] = useState(1.0)
   // Drag state for message bubbles
-  const [dragPositions, setDragPositions] = useState<Record<string, { x: number; y: number }>>({})
-  const [draggingId, setDraggingId] = useState<string | null>(null)
-  const dragStartRef = useRef<{ id: string; startX: number; startY: number; baseX: number; baseY: number } | null>(null)
+
   // Particle color hue control
   const [hue, setHue] = useState<number>(() => {
     if (typeof window !== 'undefined') {
@@ -1224,50 +1222,17 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
 
   const renderMessage = (message: Message) => {
     const isUser = message.role === "user"
-    const pos = dragPositions[message.id] || { x: 0, y: 0 }
-    const onMouseDown = (e: React.MouseEvent) => {
-      dragStartRef.current = {
-        id: message.id,
-        startX: e.clientX,
-        startY: e.clientY,
-        baseX: pos.x,
-        baseY: pos.y,
-      }
-      const onMove = (ev: MouseEvent) => {
-        if (!dragStartRef.current) return
-        const dx = ev.clientX - dragStartRef.current.startX
-        const dy = ev.clientY - dragStartRef.current.startY
-        const dist = Math.hypot(dx, dy)
-        // Activate dragging only after small threshold so text selection works
-        if (!draggingId && dist > 6) {
-          setDraggingId(message.id)
-          try { document.body.style.userSelect = 'none' } catch {}
-        }
-        if (draggingId === message.id) {
-          const nx = dragStartRef.current.baseX + dx
-          const ny = dragStartRef.current.baseY + dy
-          setDragPositions((prev) => ({ ...prev, [message.id]: { x: nx, y: ny } }))
-        }
-      }
-      const onUp = () => {
-        setDraggingId((curr) => (curr === message.id ? null : curr))
-        try { document.body.style.userSelect = '' } catch {}
-        window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
-        dragStartRef.current = null
-      }
-      window.addEventListener('mousemove', onMove)
-      window.addEventListener('mouseup', onUp)
-    }
     
     return (
-      <div key={message.id} onMouseDown={onMouseDown} style={{
+      <div key={message.id} style={{
         display: 'flex',
         justifyContent: isUser ? 'flex-end' : 'flex-start',
         marginBottom: '16px',
-        cursor: draggingId === message.id ? 'grabbing' : 'grab',
-        transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-        zIndex: draggingId === message.id ? 20 : 1
+        cursor: 'text',
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        MozUserSelect: 'text',
+        msUserSelect: 'text'
       }}>
         <div style={{
           maxWidth: '80%',
@@ -1279,7 +1244,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
           border: isUser ? 'none' : (isDarkMode ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(15,23,42,0.12)'),
           backdropFilter: isUser ? 'none' : (isDarkMode ? 'blur(10px)' : 'none'),
           position: 'relative',
-          userSelect: draggingId === message.id ? 'none' : 'text'
+          userSelect: 'text'
         }}>
           {/* Close bubble */}
           <button

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { EnhancedPDFProcessor } from '@/lib/pdf-utils'
 
 // Force Node.js runtime for PDF processing compatibility
 // pdf-parse and pdfjs-dist require Node.js APIs that aren't available in Edge Runtime
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 async function extractFromPDF(file: File) {
   try {
-    console.log('[extractFromPDF] Starting PDF extraction for:', file.name)
+    console.log('[extractFromPDF] Starting enhanced PDF extraction for:', file.name)
     console.log('[extractFromPDF] File size:', file.size, 'bytes')
     console.log('[extractFromPDF] File type:', file.type)
     
@@ -24,186 +25,299 @@ async function extractFromPDF(file: File) {
     
     console.log('[extractFromPDF] ArrayBuffer created, size:', arrayBuffer.byteLength)
     
-    // Try structured extraction via pdfjs-dist first
+    // Strategy 1: Try PDF.js structured extraction (best for text-based PDFs)
     try {
-      console.log('[extractFromPDF] Attempting PDFJS text extraction...')
+      console.log('[extractFromPDF] Strategy 1: Attempting PDF.js structured extraction...')
       const pdfjsLib = await import('pdfjs-dist/build/pdf.mjs')
-      const loadingTask = (pdfjsLib as any).getDocument({ data: new Uint8Array(arrayBuffer) })
-      const pdf = await loadingTask.promise
-      let extracted = ''
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i)
-        const content = await page.getTextContent()
-        const strings = (content.items || []).map((it: any) => it.str).filter(Boolean)
-        extracted += strings.join(' ') + '\n'
-        if (extracted.length > 80000) break
+      
+      // Configure PDF.js worker (optional)
+      try {
+        const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs' as any)
+        if (pdfjsWorker.default) {
+          (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker.default
+        }
+      } catch (workerError) {
+        // Worker configuration is optional, continue without it
+        console.log('[extractFromPDF] PDF.js worker not configured, using main thread processing')
       }
-      const extractedText = (extracted || '').trim()
-      if (extractedText.length > 100) {
-        console.log('[extractFromPDF] PDFJS extraction successful, length:', extractedText.length)
+      
+      const loadingTask = (pdfjsLib as any).getDocument({ 
+        data: new Uint8Array(arrayBuffer),
+        verbosity: 0 // Reduce console noise
+      })
+      
+      const pdf = await loadingTask.promise
+      console.log('[extractFromPDF] PDF loaded successfully, pages:', pdf.numPages)
+      
+      let extracted = ''
+      let pageCount = 0
+      const maxPages = Math.min(pdf.numPages, 50) // Limit to prevent memory issues
+      
+      for (let i = 1; i <= maxPages; i++) {
+        try {
+          const page = await pdf.getPage(i)
+          const content = await page.getTextContent()
+          const strings = (content.items || [])
+            .map((it: any) => it.str)
+            .filter(Boolean)
+            .join(' ')
+          
+          if (strings.trim()) {
+            extracted += strings + '\n'
+            pageCount++
+          }
+          
+          // Check if we have enough content
+          if (extracted.length > 50000) {
+            console.log(`[extractFromPDF] Sufficient content extracted from ${i} pages`)
+            break
+          }
+        } catch (pageError) {
+          console.warn(`[extractFromPDF] Error processing page ${i}:`, pageError)
+          continue // Continue with next page
+        }
+      }
+      
+      const extractedText = extracted.trim()
+      if (extractedText.length > 200) {
+        console.log('[extractFromPDF] PDF.js extraction successful, length:', extractedText.length, 'pages:', pageCount)
         return {
           text: extractedText,
           metadata: {
-            pages: pdf.numPages,
+            pages: pageCount,
             wordCount: extractedText.split(/\s+/).length,
-            note: 'pdfjs-extraction'
+            note: 'pdfjs-structured-extraction',
+            confidence: 85
           }
         }
       }
     } catch (pdfjsErr) {
-      console.warn('[extractFromPDF] PDFJS extraction failed, falling back:', pdfjsErr)
+      console.warn('[extractFromPDF] PDF.js extraction failed, trying next strategy:', pdfjsErr)
     }
 
-    // Fallback: attempt raw file text + AI cleanup
+    // Strategy 2: Try pdf-parse library (better for complex PDFs)
     try {
-      console.log('[extractFromPDF] Attempting raw text + AI cleanup...')
+      console.log('[extractFromPDF] Strategy 2: Attempting pdf-parse extraction...')
+      const pdfParse = await import('pdf-parse')
+      const buffer = Buffer.from(arrayBuffer)
+      const data = await pdfParse.default(buffer)
+      
+      if (data.text && data.text.trim().length > 200) {
+        console.log('[extractFromPDF] pdf-parse extraction successful, length:', data.text.length)
+        return {
+          text: data.text.trim(),
+          metadata: {
+            pages: data.numpages || 1,
+            wordCount: data.text.split(/\s+/).length,
+            note: 'pdf-parse-extraction',
+            confidence: 90
+          }
+        }
+      }
+    } catch (pdfParseErr) {
+      console.warn('[extractFromPDF] pdf-parse extraction failed, trying next strategy:', pdfParseErr)
+    }
+
+    // Strategy 3: Enhanced AI-powered extraction with better prompts
+    try {
+      console.log('[extractFromPDF] Strategy 3: Attempting AI-powered extraction...')
       const textContent = await file.text()
       if (textContent && textContent.trim().length > 0) {
         console.log('[extractFromPDF] Raw text available, length:', textContent.length)
         
-        // Use OpenAI to intelligently parse and summarize the PDF content
+        // Enhanced AI prompt for better PDF parsing
+        const enhancedPrompt = `You are an expert document parser specializing in PDF content extraction. Your task is to:
+
+1. ANALYZE the provided PDF content and extract ONLY the meaningful, human-readable text
+2. REMOVE all PDF artifacts, binary data, formatting commands, and technical jargon
+3. PRESERVE the logical structure and flow of the original document
+4. FOCUS on extracting actual content that would be valuable for Human Resources professionals
+5. RETURN clean, professional text suitable for reading aloud and analysis
+
+CRITICAL REQUIREMENTS:
+- Extract ONLY readable, meaningful content
+- Remove PDF structure markers, coordinates, and technical data
+- Preserve document hierarchy and organization
+- Use clear, professional language
+- Ensure the output is suitable for text-to-speech software
+- Focus on content that would be relevant for HR document analysis
+
+PDF Content to Process:
+${textContent.substring(0, 12000)}${textContent.length > 12000 ? '\n\n[Content truncated for processing]' : ''}
+
+Please provide a clean, structured extraction of the document content.`
+        
         const openaiResponse = await fetch('/api/ai/query', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            messages: [
-              {
-                role: 'system',
-                content: `You are a Human Resources document specialist and professional document parser. Your job is to:
-
-1. Extract ONLY the relevant, readable text content from PDF data
-2. Remove all PDF structure commands, binary data, formatting artifacts, and technical jargon
-3. Convert the content into clean, plain English that can be read aloud naturally
-4. Focus on Human Resources related content (resumes, job descriptions, policies, etc.)
-5. Provide a clear, professional summary of the document's key information
-6. Use simple, clear language without any special characters or symbols
-7. Structure the response as a natural, flowing summary that sounds professional when spoken
-
-CRITICAL REQUIREMENTS FOR TEXT-TO-SPEECH:
-- Write in plain English suitable for text-to-speech
-- NO emojis, NO markdown, NO asterisks (*), NO backticks, NO square brackets [], NO parentheses (), NO special symbols
-- NO hashtags, NO at symbols, NO percent signs, NO ampersands, NO plus signs, NO equals signs
-- Use "Human Resources" instead of "HR" for clarity when reading aloud
-- Focus on the actual content, not technical details
-- Make it sound natural and professional when read aloud
-- Use only letters, numbers, spaces, periods, commas, semicolons, colons, exclamation marks, and question marks
-- Avoid any characters that would sound awkward when read aloud by text-to-speech software`
-              },
-              {
-                role: 'user',
-                content: `Please analyze this PDF document and provide a clean, plain English summary that can be read aloud. Focus on extracting the actual content and presenting it in a clear, professional manner suitable for Human Resources professionals.
-
-IMPORTANT: Your response must be completely clean text with NO special characters, NO markdown, NO emojis, NO asterisks, NO backticks, NO brackets, NO parentheses, and NO symbols. Use only letters, numbers, spaces, and basic punctuation (periods, commas, semicolons, colons, exclamation marks, question marks, hyphens).
-
-The content to analyze:
-${textContent.substring(0, 8000)}${textContent.length > 8000 ? '\n\n[Content truncated for processing]' : ''}`
-              }
-            ],
-            model: 'gpt-3.5-turbo',
-            max_tokens: 4000,
-            temperature: 0.1
+            query: enhancedPrompt,
+            userId: 'system',
+            documentContext: ['PDF parsing request']
           })
         })
         
         if (openaiResponse.ok) {
           const openaiData = await openaiResponse.json()
-          const aiResponse = openaiData.choices?.[0]?.message?.content || ''
+          const aiResponse = openaiData.response || ''
           
-          if (aiResponse && aiResponse.trim().length > 100) {
-            console.log('[extractFromPDF] OpenAI parsing successful, response length:', aiResponse.length)
+          if (aiResponse && aiResponse.trim().length > 200) {
+            console.log('[extractFromPDF] AI-powered extraction successful, response length:', aiResponse.length)
             
-            // Clean up the AI response to ensure it's plain text suitable for reading aloud
+            // Clean and validate AI response
             const cleanResponse = aiResponse
-              .replace(/```[\s\S]*?```/g, '') // Remove any code blocks
-              .replace(/\[.*?\]/g, '') // Remove square brackets
+              .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+              .replace(/\[.*?\]/g, '') // Remove brackets
               .replace(/\(.*?\)/g, '') // Remove parentheses
               .replace(/[^\w\s\.\,\;\:\!\?\-]/g, '') // Keep only letters, numbers, spaces, and basic punctuation
               .replace(/\s+/g, ' ') // Normalize whitespace
-              .replace(/\*/g, '') // Remove any remaining asterisks
-              .replace(/`/g, '') // Remove any remaining backticks
-              .replace(/[#@%&+=]/g, '') // Remove hashtags, at symbols, percent, ampersand, plus, equals
-              .replace(/\s+/g, ' ') // Normalize whitespace again
               .trim()
             
-            if (cleanResponse.length > 50) {
-              // Final validation: ensure no special characters remain
-              const finalCleanResponse = cleanResponse
-                .replace(/[^\w\s\.\,\;\:\!\?\-]/g, '') // Final cleanup of any remaining special characters
-                .replace(/\s+/g, ' ') // Normalize whitespace
-                .trim()
-              
-              if (finalCleanResponse.length > 50) {
-                return { 
-                  text: finalCleanResponse, 
-                  metadata: { 
-                    pages: 1, // Assume single page for now
-                    wordCount: finalCleanResponse.split(/\s+/).length,
-                    note: 'Smart PDF parsing with OpenAI - completely clean text suitable for text-to-speech'
-                  } 
-                }
+            if (cleanResponse.length > 100) {
+              return { 
+                text: cleanResponse, 
+                metadata: { 
+                  pages: 1,
+                  wordCount: cleanResponse.split(/\s+/).length,
+                  note: 'AI-powered-PDF-parsing',
+                  confidence: 75
+                } 
               }
             }
-          } else {
-            console.log('[extractFromPDF] OpenAI parsing returned insufficient content')
           }
-        } else {
-          console.log('[extractFromPDF] OpenAI API call failed, status:', openaiResponse.status)
         }
       }
-      
-      // Fallback: smart text extraction with better filtering
-      console.log('[extractFromPDF] OpenAI parsing failed, using smart fallback...')
+    } catch (aiError) {
+      console.warn('[extractFromPDF] AI-powered extraction failed, trying fallback:', aiError)
+    }
+
+    // Strategy 4: Advanced text filtering and cleaning
+    try {
+      console.log('[extractFromPDF] Strategy 4: Attempting advanced text filtering...')
+      const textContent = await file.text()
       if (textContent && textContent.trim().length > 0) {
-        // Advanced filtering to extract readable content
-        const smartCleanText = textContent
-          .replace(/endstream|endobj|\d+\s+\d+\s+obj|<<|>>|stream|BT|ET|Td|Tj|TJ|Tm|Tc|Tw|Tz|TL|Ts|Tr|Ts|Tf|Td|Tm|Tc|Tw|Tz|TL|Ts|Tr|Ts|Tf/g, '') // Remove PDF structure
-          .replace(/\/[A-Za-z]+\s+\/[A-Za-z]+/g, '') // Remove PDF commands
-          .replace(/[^\x20-\x7E\n\r\t]/g, '') // Keep only printable ASCII
-          .replace(/\s+/g, ' ') // Normalize whitespace
-          .replace(/([A-Z])\s+([A-Z])/g, '$1 $2') // Fix spacing between capital letters
-          .replace(/([a-z])\s+([A-Z])/g, '$1 $2') // Fix spacing between lowercase and uppercase
+        
+        // Advanced PDF structure filtering
+        const advancedCleanText = textContent
+          // Remove PDF structure markers
+          .replace(/endstream|endobj|\d+\s+\d+\s+obj|<<|>>|stream|BT|ET|Td|Tj|TJ|Tm|Tc|Tw|Tz|TL|Ts|Tr|Ts|Tf|Td|Tm|Tc|Tw|Tz|TL|Ts|Tr|Ts|Tf/g, '')
+          // Remove PDF commands and operators
+          .replace(/\/[A-Za-z]+\s+\/[A-Za-z]+/g, '')
+          .replace(/\/[A-Za-z]+\s+\d+/g, '')
+          // Remove coordinate systems and positioning
+          .replace(/\d+\.?\d*\s+\d+\.?\d*\s+[A-Za-z]+/g, '')
+          // Remove binary and non-printable characters
+          .replace(/[^\x20-\x7E\n\r\t]/g, '')
+          // Clean up spacing and formatting
+          .replace(/\s+/g, ' ')
+          .replace(/([A-Z])\s+([A-Z])/g, '$1 $2')
+          .replace(/([a-z])\s+([A-Z])/g, '$1 $2')
+          // Remove excessive whitespace
+          .replace(/\n\s*\n/g, '\n')
           .trim()
         
-        if (smartCleanText.length > 100) {
-          console.log('[extractFromPDF] Smart fallback successful, length:', smartCleanText.length)
+        if (advancedCleanText.length > 300) {
+          console.log('[extractFromPDF] Advanced filtering successful, length:', advancedCleanText.length)
           return { 
-            text: smartCleanText, 
+            text: advancedCleanText, 
             metadata: { 
               pages: 1,
-              wordCount: smartCleanText.split(/\s+/).length,
-              note: 'Smart fallback extraction - advanced PDF structure filtering'
+              wordCount: advancedCleanText.split(/\s+/).length,
+              note: 'advanced-PDF-filtering',
+              confidence: 60
             } 
           }
         }
       }
-      
-      // Final fallback: signal extraction failure without injecting generic text
-      console.log('[extractFromPDF] All extraction methods failed')
-      return {
-        text: '',
-        metadata: {
-          pages: undefined,
-          wordCount: 0,
-          note: 'extraction_failed'
+    } catch (filterError) {
+      console.warn('[extractFromPDF] Advanced filtering failed:', filterError)
+    }
+
+    // Strategy 5: Enhanced PDF processor (new advanced method)
+    try {
+      console.log('[extractFromPDF] Strategy 5: Attempting enhanced PDF processing...')
+      const textContent = await file.text()
+      if (textContent && textContent.trim().length > 0) {
+        
+        const enhancedResult = await EnhancedPDFProcessor.analyzePDFContent(
+          textContent,
+          {
+            enableOCR: true,
+            maxPages: 50,
+            qualityThreshold: 0.3,
+            enableImageAnalysis: true
+          }
+        )
+        
+        if (enhancedResult.text && enhancedResult.text.trim().length > 100) {
+          console.log('[extractFromPDF] Enhanced processing successful, confidence:', enhancedResult.confidence)
+          return { 
+            text: enhancedResult.text, 
+            metadata: { 
+              pages: enhancedResult.metadata.pages,
+              wordCount: enhancedResult.metadata.wordCount,
+              note: `enhanced-${enhancedResult.extractionMethod}`,
+              confidence: enhancedResult.confidence
+            } 
+          }
         }
       }
-    } catch (extractionError) {
-      console.error('[extractFromPDF] All extraction methods failed:', extractionError)
-      // Signal failure instead of fabricating content
-      return {
-        text: '',
-        metadata: {
-          pages: undefined,
-          wordCount: 0,
-          note: 'extraction_failed'
+    } catch (enhancedError) {
+      console.warn('[extractFromPDF] Enhanced processing failed, trying basic fallback:', enhancedError)
+    }
+
+    // Strategy 6: Basic text extraction with minimal processing (final fallback)
+    try {
+      console.log('[extractFromPDF] Strategy 6: Attempting basic text extraction...')
+      const textContent = await file.text()
+      if (textContent && textContent.trim().length > 0) {
+        
+        // Basic cleaning - just remove obvious PDF artifacts
+        const basicCleanText = textContent
+          .replace(/endstream|endobj|stream|BT|ET/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+        
+        if (basicCleanText.length > 100) {
+          console.log('[extractFromPDF] Basic extraction successful, length:', basicCleanText.length)
+          return { 
+            text: basicCleanText, 
+            metadata: { 
+              pages: 1,
+              wordCount: basicCleanText.split(/\s+/).length,
+              note: 'basic-PDF-extraction',
+              confidence: 40
+            } 
+          }
         }
+      }
+    } catch (basicError) {
+      console.warn('[extractFromPDF] Basic extraction failed:', basicError)
+    }
+    
+    // All strategies failed - return meaningful error
+    console.log('[extractFromPDF] All extraction strategies failed')
+    return {
+      text: `Unable to extract readable content from the PDF file "${file.name}". This may be due to:
+      
+1. The PDF being image-based or scanned (requires OCR processing)
+2. The PDF being corrupted or password-protected
+3. The PDF containing only non-text elements
+4. The file being in an unsupported PDF format
+
+Please try uploading a different PDF file or contact support if this issue persists.`,
+      metadata: {
+        pages: undefined,
+        wordCount: 0,
+        note: 'extraction_failed_all_strategies',
+        confidence: 0
       }
     }
+    
   } catch (error) {
-    console.error('[extractFromPDF] Error details:', error)
-    console.error('[extractFromPDF] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('[extractFromPDF] Critical error during extraction:', error)
     throw new Error(`PDF extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }

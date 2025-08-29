@@ -2,6 +2,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { EnhancedChatInterface } from "@/components/chat/enhanced-chat-interface"
+import { WaveAnimation } from "@/components/ui/wave-animation-background"
 import { AuthProvider } from "@/contexts/auth-context"
 
 export default function Page() {
@@ -18,38 +20,26 @@ export default function Page() {
 
   return (
     <AuthProvider>
-      <div className="relative w-full h-screen overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-black">
-        {/* Simple Header */}
-        <header className="relative z-20 p-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-              VoiceLoop HR
-            </h1>
-            <button
-              onClick={toggleTheme}
-              className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-lg shadow-lg"
-            >
-              {isDarkMode ? '☀️ Light' : '🌙 Dark'}
-            </button>
-          </div>
-        </header>
+      <div className="relative w-full h-screen overflow-hidden">
+        {/* Background Wave Animation */}
+        <div className="absolute inset-0 z-0">
+          <WaveAnimation
+            waveSpeed={2}
+            waveIntensity={30}
+            particleColor={isDarkMode ? "#ffffff" : "#000000"}
+            pointSize={8.0}
+            gridDistance={3}
+            className="w-full h-full"
+          />
+        </div>
+
+        {/* Glass Overlay */}
+        <div className={`absolute inset-0 z-10 ${isDarkMode ? "bg-black/10" : "bg-white/10"} backdrop-blur-[0.5px]`} />
 
         {/* Main Content */}
-        <main className="relative z-20 flex items-center justify-center h-full">
-          <div className="text-center">
-            <h2 className="text-4xl font-bold text-gray-800 dark:text-white mb-4">
-              Welcome to VoiceLoop HR
-            </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-              AI-powered HR assistant with voice interaction
-            </p>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-              <p className="text-gray-600 dark:text-gray-300">
-                Chat interface temporarily disabled for debugging
-              </p>
-            </div>
-          </div>
-        </main>
+        <div className="relative z-20 w-full h-full">
+          <EnhancedChatInterface isDarkMode={isDarkMode} onToggleTheme={toggleTheme} />
+        </div>
       </div>
     </AuthProvider>
   )

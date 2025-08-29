@@ -17,12 +17,12 @@ export async function POST(request: NextRequest) {
     const extractedText = await file.text()
 
     // Analyze document with AI
-    const summary = await AIProcessor.summarizeDocument(extractedText)
+    const analysis = await AIProcessor.summarizeDocument(extractedText)
 
     // TODO: Save analysis results to database when Supabase is connected
     // await supabase.from('documents').update({
     //   ai_summary: analysis.summary,
-    //   ai_keywords: analysis.keywords,
+    //   ai_keywords: analysis.keyPoints,
     //   processed_at: new Date().toISOString(),
     //   status: 'completed'
     // }).eq('id', documentId)
@@ -31,8 +31,21 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      analysis: summary,
-      extractedText: extractedText.substring(0, 500) + "...",
+      analysis: {
+        summary: analysis.summary,
+        keyPoints: analysis.keyPoints,
+        sentiment: analysis.sentiment,
+        confidence: analysis.confidence,
+        documentType: analysis.documentType,
+        recommendation: analysis.recommendation
+      },
+      preview: {
+        shouldStore: analysis.recommendation === 'store',
+        documentType: analysis.documentType,
+        confidence: analysis.confidence,
+        extractedTextLength: extractedText.length,
+        previewText: extractedText.substring(0, 300) + (extractedText.length > 300 ? "..." : "")
+      }
     })
   } catch (error) {
     console.error("[v0] Document analysis error:", error)

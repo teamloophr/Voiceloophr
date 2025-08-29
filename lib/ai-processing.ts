@@ -5,6 +5,8 @@ export interface DocumentAnalysis {
   keyPoints: string[]
   sentiment: 'positive' | 'negative' | 'neutral'
   confidence: number
+  documentType: string
+  recommendation: 'store' | 'review'
 }
 
 export interface TranscriptionResult {
@@ -37,18 +39,20 @@ export class AIProcessor {
           summary: 'No extractable text found in the document.',
           keyPoints: [],
           sentiment: 'neutral',
-          confidence: 0
+          confidence: 0,
+          documentType: 'Unknown',
+          recommendation: 'review'
         }
       }
       
       // Get custom AI instructions for document analysis
-      let systemInstructions = 'You are an HR expert. Analyze the user content and return ONLY a strict JSON object with keys: summary (string, 2-3 sentences), keyPoints (string[] of 3-6 concise points), sentiment (one of \'positive\'|\'negative\'|\'neutral\'), confidence (0-100 number). No markdown, no prose, only JSON.'
+      let systemInstructions = 'You are an HR professional reviewing documents to decide whether to store them. Create a concise, human-readable summary that helps make this decision. Focus on:\n\n1. What type of document this is (resume, contract, policy, etc.)\n2. Key information that would be valuable to store\n3. Any red flags or concerns\n\nReturn ONLY a strict JSON object with keys:\n- summary: A clear, concise summary in 2-3 sentences that a human can quickly read and understand\n- keyPoints: 3-5 bullet points highlighting the most important information\n- sentiment: one of \'positive\'|\'negative\'|\'neutral\' based on document content\n- confidence: 0-100 number indicating how confident you are in your analysis\n- documentType: The type of document (resume, contract, policy, letter, etc.)\n- recommendation: \'store\' or \'review\' based on whether this document should be stored\n\nNo markdown, no prose, only JSON.'
       
       try {
         if (typeof window !== 'undefined') {
           const storedGeneral = localStorage.getItem('voiceloophr-ai-instructions-general')
           if (storedGeneral) {
-            systemInstructions = storedGeneral + '\n\nAnalyze the following document content and return ONLY a strict JSON object with keys: summary (string, 2-3 sentences), keyPoints (string[] of 3-6 concise points), sentiment (one of \'positive\'|\'negative\'|\'neutral\'), confidence (0-100 number). No markdown, no prose, only JSON.'
+            systemInstructions = storedGeneral + '\n\n' + systemInstructions
           }
         }
       } catch {
@@ -69,7 +73,7 @@ export class AIProcessor {
         ],
         response_format: { type: 'json_object' },
         temperature: 0.3,
-        max_tokens: 500
+        max_tokens: 600
       })
 
       const result = response.choices[0]?.message?.content
@@ -83,7 +87,9 @@ export class AIProcessor {
           summary: parsed.summary || 'Summary not available',
           keyPoints: parsed.keyPoints || [],
           sentiment: parsed.sentiment || 'neutral',
-          confidence: parsed.confidence || 0
+          confidence: parsed.confidence || 0,
+          documentType: parsed.documentType || 'Unknown',
+          recommendation: parsed.recommendation || 'review'
         }
       } catch {
         // Try to extract JSON from text (e.g., wrapped in fences)
@@ -95,7 +101,9 @@ export class AIProcessor {
               summary: parsed2.summary || 'Summary not available',
               keyPoints: parsed2.keyPoints || [],
               sentiment: parsed2.sentiment || 'neutral',
-              confidence: parsed2.confidence || 0
+              confidence: parsed2.confidence || 0,
+              documentType: parsed2.documentType || 'Unknown',
+              recommendation: parsed2.recommendation || 'review'
             }
           }
         } catch {}
@@ -104,7 +112,9 @@ export class AIProcessor {
           summary: result.substring(0, 200) + '...',
           keyPoints: [],
           sentiment: 'neutral',
-          confidence: 0
+          confidence: 0,
+          documentType: 'Unknown',
+          recommendation: 'review'
         }
       }
     } catch (error) {

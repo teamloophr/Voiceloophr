@@ -9,15 +9,11 @@ import { Brain, Loader2, CheckCircle, AlertCircle } from "lucide-react"
 
 interface AnalysisResult {
   summary: string
-  keywords: string[]
-  skills: string[]
-  experienceLevel?: string
-  sentiment?: string
-  contactInfo?: {
-    email?: string
-    phone?: string
-    location?: string
-  }
+  keyPoints: string[]
+  sentiment: 'positive' | 'negative' | 'neutral'
+  confidence: number
+  documentType: string
+  recommendation: 'store' | 'review'
 }
 
 interface DocumentAnalyzerProps {
@@ -84,7 +80,7 @@ export function DocumentAnalyzer({ file, onAnalysisComplete }: DocumentAnalyzerP
           <Brain className="h-5 w-5 text-blue-600" />
           <span>AI Document Analysis</span>
         </CardTitle>
-        <CardDescription>Analyze {file.name} with AI to extract insights, keywords, and summaries</CardDescription>
+        <CardDescription>Analyze {file.name} with AI to get a concise summary and recommendation for storage</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {!result && !isAnalyzing && (
@@ -102,7 +98,7 @@ export function DocumentAnalyzer({ file, onAnalysisComplete }: DocumentAnalyzerP
             </div>
             <Progress value={progress} className="h-2" />
             <p className="text-xs text-gray-500">
-              Extracting text, generating summary, and identifying key information
+              Extracting text, analyzing content, and generating storage recommendation
             </p>
           </div>
         )}
@@ -121,59 +117,74 @@ export function DocumentAnalyzer({ file, onAnalysisComplete }: DocumentAnalyzerP
               <span className="text-sm text-green-600">Analysis completed successfully</span>
             </div>
 
+            {/* Document Type and Recommendation */}
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <div>
+                <span className="text-sm font-medium text-blue-900">Document Type: </span>
+                <Badge variant="outline" className="ml-2">{result.documentType}</Badge>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-blue-900">Recommendation: </span>
+                <Badge 
+                  className={`ml-2 ${
+                    result.recommendation === 'store' 
+                      ? 'bg-green-100 text-green-800 border-green-200' 
+                      : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                  }`}
+                >
+                  {result.recommendation === 'store' ? 'Store' : 'Review'}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Confidence Score */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-black">Confidence Score</h4>
+                <span className="text-sm text-gray-600">{result.confidence}%</span>
+              </div>
+              <Progress value={result.confidence} className="h-2" />
+              <p className="text-xs text-gray-500 mt-1">
+                {result.confidence >= 80 ? 'High confidence in analysis' : 
+                 result.confidence >= 60 ? 'Moderate confidence in analysis' : 
+                 'Low confidence - manual review recommended'}
+              </p>
+            </div>
+
             {/* Summary */}
             <div>
               <h4 className="text-sm font-medium text-black mb-2">AI Summary</h4>
               <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">{result.summary}</p>
             </div>
 
-            {/* Keywords */}
-            {result.keywords.length > 0 && (
+            {/* Key Points */}
+            {result.keyPoints && result.keyPoints.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-black mb-2">Keywords</h4>
-                <div className="flex flex-wrap gap-1">
-                  {result.keywords.map((keyword, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {keyword}
-                    </Badge>
+                <h4 className="text-sm font-medium text-black mb-2">Key Points</h4>
+                <div className="space-y-2">
+                  {result.keyPoints.map((point, index) => (
+                    <div key={index} className="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-sm text-gray-700">{point}</p>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Skills */}
-            {result.skills.length > 0 && (
-              <div>
-                <h4 className="text-sm font-medium text-black mb-2">Extracted Skills</h4>
-                <div className="flex flex-wrap gap-1">
-                  {result.skills.map((skill, index) => (
-                    <Badge key={index} className="text-xs bg-blue-100 text-blue-800">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Experience Level */}
-            {result.experienceLevel && (
-              <div>
-                <h4 className="text-sm font-medium text-black mb-2">Experience Level</h4>
-                <Badge className="capitalize bg-purple-100 text-purple-800">{result.experienceLevel}</Badge>
-              </div>
-            )}
-
-            {/* Contact Info */}
-            {result.contactInfo && (
-              <div>
-                <h4 className="text-sm font-medium text-black mb-2">Contact Information</h4>
-                <div className="space-y-1 text-sm text-gray-600">
-                  {result.contactInfo.email && <p>Email: {result.contactInfo.email}</p>}
-                  {result.contactInfo.phone && <p>Phone: {result.contactInfo.phone}</p>}
-                  {result.contactInfo.location && <p>Location: {result.contactInfo.location}</p>}
-                </div>
-              </div>
-            )}
+            {/* Sentiment */}
+            <div>
+              <h4 className="text-sm font-medium text-black mb-2">Document Sentiment</h4>
+              <Badge 
+                className={`${
+                  result.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
+                  result.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}
+              >
+                {result.sentiment.charAt(0).toUpperCase() + result.sentiment.slice(1)}
+              </Badge>
+            </div>
           </div>
         )}
       </CardContent>
