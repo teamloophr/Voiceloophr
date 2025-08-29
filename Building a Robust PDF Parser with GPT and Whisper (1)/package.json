@@ -55,7 +55,6 @@
     "next": "^15.5.0",
     "next-themes": "latest",
     "openai": "^5.15.0",
-    "pdf-parse": "^1.1.1",
     "pdfjs-dist": "^5.4.54",
     "react": "^19",
     "react-day-picker": "9.8.0",
@@ -89,3 +88,5 @@
     "vitest": "^2.0.0"
   }
 }
+
+

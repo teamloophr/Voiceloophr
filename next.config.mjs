@@ -37,10 +37,7 @@ const nextConfig = {
   // Ensure proper build output
   output: 'standalone',
   
-  // Disable static generation for problematic routes
-  async generateStaticParams() {
-    return []
-  }
+  // Remove invalid generateStaticParams to satisfy Next 15
 }
 
 export default nextConfig
