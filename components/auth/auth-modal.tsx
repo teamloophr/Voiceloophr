@@ -110,15 +110,7 @@ export function AuthModal({ isOpen, onClose, isDarkMode }: AuthModalProps) {
             alignItems: 'center',
             gap: '16px'
           }}>
-            <img
-              src={isDarkMode ? "https://automationalien.s3.us-east-1.amazonaws.com/VoiceLoopLogoBlack.png" : "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png"}
-              alt="VoiceLoop Logo"
-              style={{ 
-                height: '40px',
-                width: 'auto',
-                filter: isDarkMode ? 'invert(1)' : 'none'
-              }}
-            />
+
             <div>
               <h2 style={{
                 fontSize: '1.5rem',

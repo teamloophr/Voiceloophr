@@ -134,11 +134,11 @@ export function ChatInterface({ isDarkMode, onToggleTheme }: ChatInterfaceProps)
         <header
           className={`flex items-center justify-between p-4 border-b ${isDarkMode ? "border-gray-800" : "border-gray-200"}`}
         >
-          <img
-            src="https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png"
-            alt="TeamLoop Logo"
-            className="h-8 w-auto"
-          />
+          <div className="flex items-center">
+            <h1 className={`text-xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+              VoiceLoop HR
+            </h1>
+          </div>
           <Button variant="ghost" size="sm" onClick={onToggleTheme} className="rounded-full">
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>

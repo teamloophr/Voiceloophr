@@ -8,10 +8,8 @@ export const metadata: Metadata = {
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   icons: {
     icon: [
-      { url: "/favicon.ico" },
-      { url: "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png", type: "image/png" }
-    ],
-    apple: [{ url: "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png" }]
+      { url: "/favicon.ico" }
+    ]
   }
 }
 

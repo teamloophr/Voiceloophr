@@ -697,7 +697,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         timestamp: new Date(),
         type: "analysis",
         metadata: { 
-                     analysis: { summary: 'Document analysis from OCR', keyPoints: [], sentiment: 'neutral', confidence: 0.8 },
+                     analysis: { summary: 'Document analysis from OCR', keyPoints: [], sentiment: 'neutral', confidence: 0.8, documentType: 'image', recommendation: 'review' },
           file: file,
           extractedText: extractedText,
           requiresAction: true // Flag to show save/discard options
@@ -759,7 +759,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         timestamp: new Date(),
         type: "analysis",
         metadata: { 
-                     analysis: { summary: 'Document analysis from archive', keyPoints: [], sentiment: 'neutral', confidence: 0.8 },
+                     analysis: { summary: 'Document analysis from archive', keyPoints: [], sentiment: 'neutral', confidence: 0.8, documentType: 'archive', recommendation: 'review' },
           file: file,
           extractedText: extractedText,
           requiresAction: true // Flag to show save/discard options
@@ -825,7 +825,7 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
         timestamp: new Date(),
         type: hasContent ? "analysis" : "text",
         metadata: { 
-          analysis: { summary: 'Document analysis', keyPoints: [], sentiment: 'neutral', confidence: 0.8 },
+          analysis: { summary: 'Document analysis', keyPoints: [], sentiment: 'neutral', confidence: 0.8, documentType: 'document', recommendation: 'review' },
           file: file,
           extractedText: extractedText,
           requiresAction: true
@@ -1620,16 +1620,15 @@ export function EnhancedChatInterface({ isDarkMode, onToggleTheme }: EnhancedCha
             flexShrink: 0,
             minWidth: 0
           }}>
-            <img
-              src={isDarkMode ? "https://automationalien.s3.us-east-1.amazonaws.com/VoiceLoopLogoBlack.png" : "https://automationalien.s3.us-east-1.amazonaws.com/teamloop_logo_2.png"}
-              alt="VoiceLoop Logo"
-              style={{ 
-                height: '60px',
-                width: 'auto',
-                flexShrink: 0,
-                filter: isDarkMode ? 'invert(1)' : 'none'
-              }}
-            />
+            <h1 style={{ 
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: ui.textPrimary,
+              flexShrink: 0,
+              margin: 0
+            }}>
+              VoiceLoop HR
+            </h1>
             {isGuest && (
               <span style={{
                 padding: '6px 12px',
